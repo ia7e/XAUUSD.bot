@@ -1,8 +1,10 @@
 # XAUUSD Trading Bot Configuration
 import os
 
-# Telegram Configuration
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '8858345146:AAGPy6Qxtr5k0EV3P_nvCXPaL1aaP_yA5no')
+# Telegram Configuration (تم تحديث المسميات لتتوافق مع كود البوت)
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', os.getenv('TELEGRAM_TOKEN', '8858345146:AAGPy6Qxtr5k0EV3P_nvCXPaL1aaP_yA5no'))
+TELEGRAM_TOKEN = TELEGRAM_BOT_TOKEN
+BOT_TOKEN = TELEGRAM_BOT_TOKEN
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '8952278702')
 
 # Exchange Configuration
@@ -55,5 +57,5 @@ LOG_LEVEL = 'INFO'
 LOG_FILE = 'bot.log'
 
 # Render/Deployment Settings
-PORT = int(os.getenv('PORT', 8080))
+PORT = int(os.getenv('PORT', 10000))
 WEB_SERVER_ENABLED = True
