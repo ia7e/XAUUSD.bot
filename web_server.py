@@ -6,10 +6,11 @@ Provides a beautiful web interface showing current price, signals, and statistic
 from flask import Flask, render_template, jsonify, request
 import threading
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 import os
 import sys
+import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -78,7 +79,7 @@ def update_bot_state():
         # Get current price
         current_price = data_fetcher.get_current_price()
         if current_price:
-            bot_state['current_price'] = current_price
+            bot_state['current_price'] = float(current_price)
             bot_state['last_updated'] = datetime.now().isoformat()
         
         # Fetch data for all timeframes
@@ -89,7 +90,7 @@ def update_bot_state():
         all_patterns = []
         
         for timeframe, df in data_dict.items():
-            if len(df) > 0:
+            if df is not None and len(df) > 0:
                 # Calculate indicators
                 df_with_indicators = technical_indicators.calculate_all_indicators(df, config)
                 timeframes_data[timeframe] = df_with_indicators
@@ -97,43 +98,55 @@ def update_bot_state():
                 # Detect candle patterns
                 patterns = CandlePatterns.detect_all_patterns(df_with_indicators, lookback=10)
                 for pattern in patterns:
-                    pattern_data = pattern.to_dict()
+                    pattern_data = pattern.to_dict() if hasattr(pattern, 'to_dict') else dict(pattern)
                     pattern_data['timeframe'] = timeframe
                     all_patterns.append(pattern_data)
         
         bot_state['timeframes_data'] = timeframes_data
         bot_state['candle_patterns'] = all_patterns
         
-        # Generate signals
-        signals = signal_generator.generate_signals_all_timeframes(timeframes_data)
-        bot_state['signals'] = [s.to_dict() for s in signals]
+        # Generate signals and convert them safely to dicts
+        raw_signals = signal_generator.generate_signals_all_timeframes(timeframes_data)
+        signals_dicts = [s.to_dict() if hasattr(s, 'to_dict') else vars(s) for s in raw_signals]
+        bot_state['signals'] = signals_dicts
         
-        # Update statistics
-        total_signals = len(bot_state['signal_history']) + len(signals)
-        buy_signals = len([s for s in signals if 'BUY' in s['signal_type']]) + \
-                      len([s for s in bot_state['signal_history'] if 'BUY' in s['signal_type']])
-        sell_signals = len([s for s in signals if 'SELL' in s['signal_type']]) + \
-                       len([s for s in bot_state['signal_history'] if 'SELL' in s['signal_type']])
+        # Update statistics using dictionary keys safely
+        total_signals = len(bot_state['signal_history']) + len(signals_dicts)
         
-        strong_buy = len([s for s in signals if s['signal_type'] == 'STRONG_BUY']) + \
-                     len([s for s in bot_state['signal_history'] if s['signal_type'] == 'STRONG_BUY'])
-        strong_sell = len([s for s in signals if s['signal_type'] == 'STRONG_SELL']) + \
-                      len([s for s in bot_state['signal_history'] if s['signal_type'] == 'STRONG_SELL'])
+        buy_signals = len([s for s in signals_dicts if 'BUY' in s.get('signal_type', '')]) + \
+                      len([s for s in bot_state['signal_history'] if 'BUY' in s.get('signal_type', '')])
+                      
+        sell_signals = len([s for s in signals_dicts if 'SELL' in s.get('signal_type', '')]) + \
+                       len([s for s in bot_state['signal_history'] if 'SELL' in s.get('signal_type', '')])
+        
+        strong_buy = len([s for s in signals_dicts if s.get('signal_type') == 'STRONG_BUY']) + \
+                     len([s for s in bot_state['signal_history'] if s.get('signal_type') == 'STRONG_BUY'])
+                     
+        strong_sell = len([s for s in signals_dicts if s.get('signal_type') == 'STRONG_SELL']) + \
+                      len([s for s in bot_state['signal_history'] if s.get('signal_type') == 'STRONG_SELL'])
         
         # Add new signals to history
-        bot_state['signal_history'] = signals + bot_state['signal_history']
+        bot_state['signal_history'] = signals_dicts + bot_state['signal_history']
         if len(bot_state['signal_history']) > 100:
             bot_state['signal_history'] = bot_state['signal_history'][:100]
         
+        # Helper to check timestamp cutoff
+        def is_last_24h(ts_str):
+            try:
+                if not ts_str:
+                    return False
+                return datetime.fromisoformat(str(ts_str)) > datetime.now() - timedelta(hours=24)
+            except Exception:
+                return False
+
         bot_state['statistics'] = {
             'total_signals': total_signals,
             'buy_signals': buy_signals,
             'sell_signals': sell_signals,
             'strong_buy': strong_buy,
             'strong_sell': strong_sell,
-            'last_24h_signals': len([s for s in bot_state['signal_history'] 
-                                     if datetime.fromisoformat(s.get('timestamp', '')) > datetime.now() - timedelta(hours=24)]),
-            'last_1h_signals': len([s for s in signals])
+            'last_24h_signals': len([s for s in bot_state['signal_history'] if is_last_24h(s.get('timestamp'))]),
+            'last_1h_signals': len(signals_dicts)
         }
         
         return True
@@ -179,7 +192,7 @@ def get_signals():
 def get_signal_history():
     """Get signal history"""
     return jsonify({
-        'history': [s.to_dict() if hasattr(s, 'to_dict') else s for s in bot_state['signal_history']],
+        'history': bot_state['signal_history'],
         'count': len(bot_state['signal_history'])
     })
 
@@ -190,20 +203,28 @@ def get_statistics():
 
 @app.route('/api/timeframes')
 def get_timeframes():
-    """Get data for all timeframes"""
+    """Get data for all timeframes with safe float casting for JSON"""
     data = {}
     for timeframe, df in bot_state['timeframes_data'].items():
-        if len(df) > 0:
+        if df is not None and len(df) > 0:
+            def safe_float(val):
+                if pd.notna(val):
+                    try:
+                        return float(val)
+                    except (ValueError, TypeError):
+                        return None
+                return None
+
             data[timeframe] = {
-                'open': df['open'].iloc[-1],
-                'high': df['high'].iloc[-1],
-                'low': df['low'].iloc[-1],
-                'close': df['close'].iloc[-1],
-                'volume': df['volume'].iloc[-1],
-                'rsi': df['rsi'].iloc[-1] if 'rsi' in df.columns else None,
-                'macd': df['macd_line'].iloc[-1] if 'macd_line' in df.columns else None,
-                'bb_upper': df['bb_upper'].iloc[-1] if 'bb_upper' in df.columns else None,
-                'bb_lower': df['bb_lower'].iloc[-1] if 'bb_lower' in df.columns else None
+                'open': safe_float(df['open'].iloc[-1]),
+                'high': safe_float(df['high'].iloc[-1]),
+                'low': safe_float(df['low'].iloc[-1]),
+                'close': safe_float(df['close'].iloc[-1]),
+                'volume': safe_float(df['volume'].iloc[-1]) if 'volume' in df.columns else 0.0,
+                'rsi': safe_float(df['rsi'].iloc[-1]) if 'rsi' in df.columns else None,
+                'macd': safe_float(df['macd_line'].iloc[-1]) if 'macd_line' in df.columns else None,
+                'bb_upper': safe_float(df['bb_upper'].iloc[-1]) if 'bb_upper' in df.columns else None,
+                'bb_lower': safe_float(df['bb_lower'].iloc[-1]) if 'bb_lower' in df.columns else None
             }
     return jsonify(data)
 
