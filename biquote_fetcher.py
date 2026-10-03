@@ -55,15 +55,15 @@ class BIQuoteFetcher:
                 df['timestamp'] = pd.to_datetime(df['timestamp'])
                 df.set_index('timestamp', inplace=True)
             
-            # إضافة حجم التداول Volume إن لم يكن موجوداً بصيغة float لمنع خطأ JSON
+            # إضافة حجم التداول Volume إن لم يكن موجوداً
             if 'volume' not in df.columns:
                 df['volume'] = 0.0
                 
             cols = ['open', 'high', 'low', 'close', 'volume']
             for col in cols:
                 if col in df.columns:
-                    # تحويل القيم صراحةً إلى float لمنع مشكلة int64 في JSON
-                    df[col] = pd.to_numeric(df[col], errors='coerce').astype(float)
+                    # تحويل قيم العمود صراحةً إلى float أصلية لمنع مشكلة JSON
+                    df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype(float)
             
             self.logger.info(f"Successfully fetched {len(df)} candles for {self.symbol} ({timeframe}) from BIQuote")
             return df[cols]
