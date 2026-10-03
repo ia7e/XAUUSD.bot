@@ -1,0 +1,13 @@
+name: XAUUSD Trading Bot
+service: web
+build: pip install -r requirements.txt
+start: python main.py
+env:
+  - key: TELEGRAM_TOKEN
+    value: ${TELEGRAM_TOKEN}
+  - key: TELEGRAM_CHAT_ID
+    value: ${TELEGRAM_CHAT_ID}
+region: us-east-1
+instance: free
+autoDeploy: true
+branch: main
