@@ -21,6 +21,7 @@ class BIQuoteFetcher:
         self.candles_count = config.get('CANDLES_COUNT', 600)
         self.rate_limit_delay = config.get('RATE_LIMIT_DELAY', 0.1)
         self.logger = logging.getLogger(__name__)
+        self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
         
     def _get_timeframe_in_seconds(self, timeframe: str) -> int:
         """Convert timeframe string to seconds"""
@@ -57,8 +58,8 @@ class BIQuoteFetcher:
             
             self.logger.info(f"Fetching {limit} {timeframe} candles for {self.symbol} from BIQuote")
             
-            # Make API request
-            response = requests.get(url, params=params, timeout=30)
+            # Make API request with headers
+            response = requests.get(url, params=params, headers=self.headers, timeout=30)
             response.raise_for_status()
             
             data = response.json()
@@ -92,24 +93,29 @@ class BIQuoteFetcher:
             return None
     
     def fetch_current_price(self) -> Optional[float]:
-        """Fetch current price from BIQuote"""
+        """Fetch current price from BIQuote history endpoint"""
         try:
-            url = f"{self.base_url}/v1/ticker"
-            params = {'symbol': self.symbol}
+            url = f"{self.base_url}/v1/history"
+            end_time = int(time.time())
+            start_time = end_time - 300
             
-            response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
+            params = {
+                'symbol': self.symbol,
+                'resolution': '1m',
+                'from': start_time,
+                'to': end_time,
+                'limit': 1
+            }
             
-            data = response.json()
-            if data and 'price' in data:
-                return float(data['price'])
-            elif data and 'last' in data:
-                return float(data['last'])
-            elif data and 'close' in data:
-                return float(data['close'])
-            else:
-                self.logger.warning(f"Unexpected BIQuote ticker response: {data}")
-                return None
+            response = requests.get(url, params=params, headers=self.headers, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                if data and 'data' in data and len(data['data']) > 0:
+                    latest_candle = data['data'][-1]
+                    return float(latest_candle[4])
+            
+            self.logger.warning(f"Could not fetch price from history endpoint, status: {response.status_code}")
+            return None
                 
         except Exception as e:
             self.logger.error(f"Failed to fetch current price from BIQuote: {e}")
@@ -121,7 +127,7 @@ class BIQuoteFetcher:
         
         for timeframe in self.timeframes:
             df = self.fetch_ohlcv(timeframe, self.candles_count)
-            if df is not None and len(df) >= 50:
+            if df is not None and len(df) >= 10:
                 data[timeframe] = df
             time.sleep(self.rate_limit_delay)
         
@@ -131,9 +137,16 @@ class BIQuoteFetcher:
     def check_api_connection(self) -> bool:
         """Check if BIQuote API is accessible"""
         try:
-            url = f"{self.base_url}/v1/ticker"
-            params = {'symbol': self.symbol}
-            response = requests.get(url, params=params, timeout=5)
+            url = f"{self.base_url}/v1/history"
+            end_time = int(time.time())
+            params = {
+                'symbol': self.symbol,
+                'resolution': '1m',
+                'from': end_time - 300,
+                'to': end_time,
+                'limit': 1
+            }
+            response = requests.get(url, params=params, headers=self.headers, timeout=5)
             return response.status_code == 200
         except Exception as e:
             self.logger.error(f"BIQuote API connection check failed: {e}")
