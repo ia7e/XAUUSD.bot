@@ -49,9 +49,12 @@ class TelegramBot:
         tp3 = signal.get('take_profit_3', 0)
         confidence = signal.get('confidence', 0)
         reasons = signal.get('reasons', [])
+        candle_patterns = signal.get('candle_patterns', [])
+        
         emoji_map = {'STRONG_BUY': '🚀🚀🚀', 'BUY': '🚀🚀', 'WEAK_BUY': '🚀', 'STRONG_SELL': '📉📉📉', 'SELL': '📉📉', 'WEAK_SELL': '📉'}
         emoji = emoji_map.get(signal_type, '⚠️')
         color = '🟢' if signal_type in ['STRONG_BUY', 'BUY', 'WEAK_BUY'] else '🔴'
+        
         message = f"""{emoji} <b>NEW XAUUSD SIGNAL</b> {emoji}
 
 <b>Signal:</b> {color} <b>{signal_type}</b>
@@ -68,6 +71,12 @@ class TelegramBot:
 """
         for reason in reasons[:5]:
             message += f"  • {reason}\n"
+        
+        if candle_patterns:
+            message += "\n<b>Candle Patterns:</b>\n"
+            for pattern in candle_patterns[:3]:
+                message += f"  • {pattern}\n"
+        
         message += "\n" + "=" * 40
         return await self.send_message(message)
 

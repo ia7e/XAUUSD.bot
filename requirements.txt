@@ -6,3 +6,4 @@ python-telegram-bot==20.8
 TA-Lib==0.4.26
 requests==2.31.0
 schedule==1.2.1
+

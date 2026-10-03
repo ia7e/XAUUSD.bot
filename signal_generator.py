@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
+from candle_patterns import CandlePatterns, CandlePattern, DetectedPattern
 
 class SignalType(Enum):
     STRONG_BUY = "STRONG_BUY"
@@ -25,6 +26,11 @@ class TradingSignal:
     timeframe: str
     reasons: List[str]
     indicators: Dict[str, float]
+    candle_patterns: List[str] = None
+
+    def __post_init__(self):
+        if self.candle_patterns is None:
+            self.candle_patterns = []
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -37,6 +43,7 @@ class TradingSignal:
             'confidence': round(self.confidence, 4),
             'timeframe': self.timeframe,
             'reasons': self.reasons,
+            'candle_patterns': self.candle_patterns,
             'indicators': {k: round(v, 4) if isinstance(v, float) else v for k, v in self.indicators.items()}
         }
 
@@ -266,6 +273,38 @@ class SignalGenerator:
         else:
             return SignalType.NEUTRAL, 0.0
 
+    def _check_candle_patterns(self, df: pd.DataFrame) -> Tuple[SignalType, List[str], float]:
+        """Check for candlestick patterns"""
+        patterns = CandlePatterns.detect_all_patterns(df, lookback=5)
+        if not patterns:
+            return SignalType.NEUTRAL, [], 0.0
+        
+        bullish_score = 0.0
+        bearish_score = 0.0
+        reasons = []
+        
+        for pattern in patterns:
+            signal_str, strength = CandlePatterns.get_pattern_signal_strength(pattern.pattern)
+            if signal_str == 'BULLISH':
+                bullish_score += strength * pattern.confidence
+                reasons.append(f"Candle pattern: {pattern.pattern.value}")
+            elif signal_str == 'BEARISH':
+                bearish_score += strength * pattern.confidence
+                reasons.append(f"Candle pattern: {pattern.pattern.value}")
+        
+        net_score = bullish_score - bearish_score
+        
+        if net_score > 0.6:
+            return SignalType.STRONG_BUY, reasons, min(bullish_score, 0.9)
+        elif net_score > 0.3:
+            return SignalType.BUY, reasons, bullish_score * 0.7
+        elif net_score < -0.6:
+            return SignalType.STRONG_SELL, reasons, min(bearish_score, 0.9)
+        elif net_score < -0.3:
+            return SignalType.SELL, reasons, bearish_score * 0.7
+        else:
+            return SignalType.NEUTRAL, reasons, 0.0
+
     def generate_signal(self, df: pd.DataFrame, timeframe: str) -> Optional[TradingSignal]:
         if len(df) < 50:
             return None
@@ -283,7 +322,9 @@ class SignalGenerator:
         all_reasons.extend(signals[-1][1])
         signals.append(self._check_stochastic_signal(df))
         all_reasons.extend(signals[-1][1])
-        weights = [0.15, 0.2, 0.15, 0.15, 0.15, 0.1, 0.1]
+        signals.append(self._check_candle_patterns(df))
+        all_reasons.extend(signals[-1][1])
+        weights = [0.15, 0.2, 0.15, 0.15, 0.15, 0.1, 0.15]
         final_signal, confidence = self._calculate_confidence_and_signal(signals, weights)
         if final_signal == SignalType.NEUTRAL:
             return None
@@ -305,6 +346,10 @@ class SignalGenerator:
             tp1 = close - (atr * take_profit_multiplier * 0.5)
             tp2 = close - (atr * take_profit_multiplier * 1.0)
             tp3 = close - (atr * take_profit_multiplier * 1.5)
+        # Detect candle patterns
+        patterns = CandlePatterns.detect_all_patterns(df, lookback=5)
+        candle_patterns = [p.pattern.value for p in patterns if p.pattern.value not in all_reasons]
+        
         indicators = {
             'rsi': df['rsi'].iloc[-1],
             'macd_line': df['macd_line'].iloc[-1],
@@ -319,6 +364,11 @@ class SignalGenerator:
             indicators[f'sma_{period}'] = df[f'sma_{period}'].iloc[-1]
         for period in self.config.get('EMA_PERIODS', []):
             indicators[f'ema_{period}'] = df[f'ema_{period}'].iloc[-1]
+        
+        # Add candle patterns to reasons
+        for pattern_name in candle_patterns:
+            all_reasons.append(f"Candle pattern: {pattern_name}")
+        
         return TradingSignal(
             signal_type=final_signal,
             entry_price=entry,
@@ -329,7 +379,8 @@ class SignalGenerator:
             confidence=confidence,
             timeframe=timeframe,
             reasons=all_reasons,
-            indicators=indicators
+            indicators=indicators,
+            candle_patterns=candle_patterns
         )
 
     def generate_signals_all_timeframes(self, data_dict: Dict[str, pd.DataFrame]) -> List[TradingSignal]:

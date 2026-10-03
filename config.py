@@ -2,12 +2,17 @@
 import os
 
 # Telegram Configuration
-TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '')
-TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
+TELEGRAM_TOKEN = os.getenv('TELEGRAM_TOKEN', '8858345146:AAGPy6Qxtr5k0EV3P_nvCXPaL1aaP_yA5no')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '8952278702')
 
-# Exchange Configuration (Using Binance as default)
-EXCHANGE_ID = 'binance'
-SYMBOL = 'XAU/USD:XAU'
+# Exchange Configuration
+EXCHANGE_ID = os.getenv('EXCHANGE_ID', 'binance')
+SYMBOL = os.getenv('SYMBOL', 'XAU/USD:XAU')
+
+# BIQuote API Configuration
+BIQUOTE_BASE_URL = os.getenv('BIQUOTE_BASE_URL', 'https://biquote.io/api')
+BIQUOTE_SYMBOL = os.getenv('BIQUOTE_SYMBOL', 'XAUUSD')
+XAUUSD_SOURCE = os.getenv('XAUUSD_SOURCE', 'BIQUOTE')
 
 # Trading Parameters
 TIMEFRAMES = ['1m', '5m', '15m', '30m', '1h', '4h']
