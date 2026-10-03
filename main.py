@@ -50,11 +50,16 @@ class XAUUSBot:
                 self.telegram_bot = None
         else:
             logger.warning("Telegram credentials not provided, running without Telegram notifications")
-        if self.data_fetcher.check_exchange_connection():
-            logger.info("Exchange connection established")
-        else:
-            logger.error("Failed to connect to exchange")
-            raise ConnectionError("Cannot connect to exchange")
+        
+        # التأكد من الاتصال
+        try:
+            if self.data_fetcher.check_exchange_connection():
+                logger.info("Data source connection established")
+            else:
+                logger.warning("Data fetcher connection check returned False, attempting to proceed...")
+        except Exception as e:
+            logger.error(f"Error checking exchange connection: {e}")
+            
         logger.info("Bot initialization complete")
 
     async def analyze_timeframe(self, timeframe: str) -> Optional[TradingSignal]:
@@ -141,15 +146,17 @@ class XAUUSBot:
             'signal_history_count': len(self.signal_history), 'telegram_enabled': self.telegram_bot is not None,
         }
 
-def main():
+async def start_bot():
     bot = XAUUSBot()
+    await bot.initialize()
+    logger.info("Starting main bot loop...")
+    await bot.run()
+
+def main():
     try:
-        asyncio.run(bot.initialize())
-        logger.info("Starting main bot loop...")
-        asyncio.run(bot.run())
+        asyncio.run(start_bot())
     except KeyboardInterrupt:
         logger.info("Received keyboard interrupt, shutting down...")
-        asyncio.run(bot.shutdown())
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)
         sys.exit(1)
