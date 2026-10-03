@@ -1,13 +1,53 @@
+# Render Configuration for XAUUSD Trading Bot
+# This file is for Render.com deployment
+
+# Service name
 name: XAUUSD Trading Bot
+
+# Type of service
 service: web
+
+# Build command
 build: pip install -r requirements.txt
+
+# Start command - Run both bot and web server
 start: python main.py
+
+# Environment variables
 env:
   - key: TELEGRAM_TOKEN
-    value: ${TELEGRAM_TOKEN}
+    value: 8858345146:AAGPy6Qxtr5k0EV3P_nvCXPaL1aaP_yA5no
   - key: TELEGRAM_CHAT_ID
-    value: ${TELEGRAM_CHAT_ID}
+    value: 8952278702
+  - key: XAUUSD_SOURCE
+    value: BIQUOTE
+  - key: BIQUOTE_BASE_URL
+    value: https://biquote.io/api
+  - key: BIQUOTE_SYMBOL
+    value: XAUUSD
+  - key: EXCHANGE_ID
+    value: binance
+  - key: SYMBOL
+    value: XAU/USD:XAU
+  - key: CANDLES_COUNT
+    value: "600"
+  - key: LOG_LEVEL
+    value: INFO
+  - key: CHECK_INTERVAL
+    value: "60"
+
+# Region
 region: us-east-1
+
+# Instance type
 instance: free
+
+# Auto-deploy on push
 autoDeploy: true
+
+# Branch
 branch: main
+
+# Health check
+healthCheckPath: /
+healthCheckInterval: 300

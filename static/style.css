@@ -1,0 +1,179 @@
+/* XAUUSD Trading Bot - Additional Styles */
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Enhanced Card Styles */
+.card-hover:hover {
+    transform: translateY(-5px) scale(1.02);
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Signal Strength Indicator */
+.confidence-bar {
+    height: 5px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 5px 0;
+}
+
+.confidence-fill {
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.5s ease;
+}
+
+.confidence-fill.strong {
+    background: linear-gradient(90deg, #4caf50, #2e7d32);
+}
+
+.confidence-fill.medium {
+    background: linear-gradient(90deg, #ffd700, #ff8c00);
+}
+
+.confidence-fill.weak {
+    background: linear-gradient(90deg, #f44336, #c62828);
+}
+
+/* Pattern Icons */
+.pattern-icon {
+    width: 24px;
+    height: 24px;
+    display: inline-block;
+    margin-right: 8px;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.pattern-icon.hammer {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%234caf50'%3E%3Cpath d='M12 2L8 6h3v12h2V6h3l-4-4z'/%3E%3C/svg%3E");
+}
+
+.pattern-icon.shooting-star {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23f44336'%3E%3Cpath d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/%3E%3C/svg%3E");
+}
+
+/* Responsive Improvements */
+@media (max-width: 480px) {
+    .container {
+        padding: 10px;
+    }
+    
+    header h1 {
+        font-size: 1.5em;
+    }
+    
+    .price-display .price-value {
+        font-size: 1.8em;
+    }
+    
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .timeframe-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .signals-table {
+        font-size: 0.8em;
+    }
+    
+    .signals-table th,
+    .signals-table td {
+        padding: 8px;
+    }
+}
+
+/* Loading Spinner Enhancement */
+.spinner-large {
+    width: 60px;
+    height: 60px;
+    border-width: 6px;
+}
+
+/* Status Indicator */
+.status-indicator {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.online {
+    background: #4caf50;
+}
+
+.status-indicator.offline {
+    background: #f44336;
+}
+
+/* Tooltip */
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 200px;
+    background-color: rgba(0, 0, 0, 0.9);
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.85em;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Progress Circle for Confidence */
+.confidence-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: conic-gradient(#ffd700 0deg, #ffd700 var(--confidence), rgba(255, 255, 255, 0.1) var(--confidence), rgba(255, 255, 255, 0.1) 360deg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+}
+
+.confidence-circle::before {
+    content: attr(data-confidence);
+    font-size: 0.7em;
+    font-weight: bold;
+    color: #fff;
+}

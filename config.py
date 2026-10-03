@@ -56,3 +56,4 @@ LOG_FILE = 'bot.log'
 
 # Render/Deployment Settings
 PORT = int(os.getenv('PORT', 8080))
+WEB_SERVER_ENABLED = True
