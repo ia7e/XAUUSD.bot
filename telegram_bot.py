@@ -17,13 +17,21 @@ class TelegramBot:
         try:
             self.bot = Bot(token=self.token)
             self.app = Application.builder().token(self.token).build()
+            
+            # إضافة معالجات الأوامر
             self.app.add_handler(CommandHandler("start", self._start_command))
             self.app.add_handler(CommandHandler("status", self._status_command))
             self.app.add_handler(CommandHandler("signals", self._signals_command))
             self.app.add_handler(CommandHandler("help", self._help_command))
             self.app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._echo))
+            
+            # تهيئة وتغيير حالة التطبيق والبدء بالاستماع للرسائل
+            await self.app.initialize()
             await self.app.start()
-            self.logger.info("Telegram bot initialized successfully")
+            if self.app.updater:
+                await self.app.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+                
+            self.logger.info("Telegram bot initialized and polling started successfully")
         except Exception as e:
             self.logger.error(f"Failed to initialize Telegram bot: {e}")
             raise
@@ -113,5 +121,8 @@ class TelegramBot:
 
     async def shutdown(self):
         if self.app:
+            if self.app.updater:
+                await self.app.updater.stop()
             await self.app.stop()
+            await self.app.shutdown()
             self.logger.info("Telegram bot stopped")
