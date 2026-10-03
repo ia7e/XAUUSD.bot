@@ -14,39 +14,20 @@ class BIQuoteFetcher:
     
     def __init__(self, config: Dict[str, Any]):
         self.config = config
-        self.base_url = config.get('BIQUOTE_BASE_URL', 'https://biquote.io/api')
+        self.base_url = config.get('BIQUOTE_BASE_URL', 'https://biquote.io/api').rstrip('/')
         self.symbol = config.get('BIQUOTE_SYMBOL', 'XAUUSD')
         self.timeframes = config.get('TIMEFRAMES', ['1m', '5m', '15m', '30m', '1h', '4h'])
-        self.candles_count = config.get('CANDLES_COUNT', 600)
+        self.candles_count = config.get('CANDLES_COUNT', 500)
         self.rate_limit_delay = config.get('RATE_LIMIT_DELAY', 0.1)
         self.logger = logging.getLogger(__name__)
         self.headers = {'User-Agent': 'Mozilla/5.0'}
 
-    def _get_timeframe_in_seconds(self, timeframe: str) -> int:
-        tf_map = {
-            '1m': 60,
-            '5m': 300,
-            '15m': 900,
-            '30m': 1800,
-            '1h': 3600,
-            '4h': 14400,
-            '1d': 86400,
-        }
-        return tf_map.get(timeframe, 60)
-
-    def fetch_ohlcv(self, timeframe: str, limit: int = 600) -> Optional[pd.DataFrame]:
-        """Fetch OHLCV data from BIQuote API"""
+    def fetch_ohlcv(self, timeframe: str, limit: int = 500) -> Optional[pd.DataFrame]:
+        """Fetch OHLCV data from BIQuote API using official /ohlc endpoint"""
         try:
-            seconds = self._get_timeframe_in_seconds(timeframe)
-            end_time = int(time.time())
-            start_time = end_time - (limit * seconds)
-            
-            url = f"{self.base_url}/v1/history"
+            url = f"{self.base_url}/{self.symbol}/ohlc"
             params = {
-                'symbol': self.symbol,
-                'resolution': timeframe,
-                'from': start_time,
-                'to': end_time,
+                'interval': timeframe,
                 'limit': limit
             }
             
@@ -54,47 +35,64 @@ class BIQuoteFetcher:
             response.raise_for_status()
             
             data = response.json()
-            if not data or 'data' not in data or not data['data']:
+            
+            # التأكد من وجود مصفوفة الشموع bars
+            bars = data.get('bars') if isinstance(data, dict) else None
+            if not bars:
+                self.logger.warning(f"No bars returned from BIQuote for {timeframe}")
                 return None
             
-            candles = data['data']
-            df = pd.DataFrame(candles, columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
+            df = pd.DataFrame(bars)
             
-            if len(df) == 0:
+            if df.empty:
                 return None
             
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='s')
-            df.set_index('timestamp', inplace=True)
+            # تحويل حقل الوقت openTime
+            if 'openTime' in df.columns:
+                df['openTime'] = pd.to_datetime(df['openTime'])
+                df.set_index('openTime', inplace=True)
+            elif 'timestamp' in df.columns:
+                df['timestamp'] = pd.to_datetime(df['timestamp'])
+                df.set_index('timestamp', inplace=True)
             
-            for col in ['open', 'high', 'low', 'close', 'volume']:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
+            # إضافة حجم التداول Volume إن لم يكن موجوداً لمنع أي خطأ في التحليل الفني
+            if 'volume' not in df.columns:
+                df['volume'] = 0
+                
+            cols = ['open', 'high', 'low', 'close', 'volume']
+            for col in cols:
+                if col in df.columns:
+                    df[col] = pd.to_numeric(df[col], errors='coerce')
             
-            return df
+            self.logger.info(f"Successfully fetched {len(df)} candles for {self.symbol} ({timeframe}) from BIQuote")
+            return df[cols]
             
         except Exception as e:
             self.logger.error(f"Failed to fetch OHLCV for {timeframe} from BIQuote: {e}")
             return None
 
     def fetch_current_price(self) -> Optional[float]:
-        """Fetch current price directly using https://biquote.io/api/{symbol}"""
+        """Fetch current price using the latest candle from BIQuote"""
         try:
+            df = self.fetch_ohlcv('1m', limit=1)
+            if df is not None and not df.empty:
+                return float(df['close'].iloc[-1])
+            
+            # محاولة جلب السعر المباشر إذا وُجد endpoint السعر
             url = f"{self.base_url}/{self.symbol}"
             response = requests.get(url, headers=self.headers, timeout=10)
-            
             if response.status_code == 200:
                 data = response.json()
-                # تجربة حقول السعر المتاحة في الاستجابة (bid/ask/price/close)
-                if 'bid' in data and 'ask' in data:
-                    return float((data['bid'] + data['ask']) / 2)
-                elif 'price' in data:
-                    return float(data['price'])
-                elif 'close' in data:
-                    return float(data['close'])
-            
+                if isinstance(data, dict):
+                    if 'bid' in data and 'ask' in data:
+                        return float((data['bid'] + data['ask']) / 2)
+                    for key in ['price', 'close', 'last']:
+                        if key in data:
+                            return float(data[key])
             return None
                 
         except Exception as e:
-            self.logger.error(f"Failed to fetch price from BIQuote: {e}")
+            self.logger.error(f"Failed to fetch current price from BIQuote: {e}")
             return None
 
     def fetch_all_timeframes(self) -> Dict[str, pd.DataFrame]:
