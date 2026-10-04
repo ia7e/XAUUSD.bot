@@ -275,7 +275,7 @@ class SignalGenerator:
 
     def _check_candle_patterns(self, df: pd.DataFrame) -> Tuple[SignalType, List[str], float]:
         """Check for candlestick patterns"""
-        patterns = CandlePatterns.detect_all_patterns(df, lookback=5)
+        patterns = CandlePatterns.detect_all_patterns(decision_df, lookback=5)
         if not patterns:
             return SignalType.NEUTRAL, [], 0.0
         
@@ -306,64 +306,68 @@ class SignalGenerator:
             return SignalType.NEUTRAL, reasons, 0.0
 
     def generate_signal(self, df: pd.DataFrame, timeframe: str) -> Optional[TradingSignal]:
-        if len(df) < 50:
+        decision_candles = int(self.config.get('DECISION_CANDLES', 50))
+        if len(df) < decision_candles:
             return None
+        decision_df = df.tail(decision_candles).copy()
         signals = []
         all_reasons = []
-        signals.append(self._check_rsi_signal(df))
+        signals.append(self._check_rsi_signal(decision_df))
         all_reasons.extend(signals[-1][1])
-        signals.append(self._check_macd_signal(df))
+        signals.append(self._check_macd_signal(decision_df))
         all_reasons.extend(signals[-1][1])
-        signals.append(self._check_bollinger_signal(df))
+        signals.append(self._check_bollinger_signal(decision_df))
         all_reasons.extend(signals[-1][1])
-        signals.append(self._check_sma_signal(df))
+        signals.append(self._check_sma_signal(decision_df))
         all_reasons.extend(signals[-1][1])
-        signals.append(self._check_ema_signal(df))
+        signals.append(self._check_ema_signal(decision_df))
         all_reasons.extend(signals[-1][1])
-        signals.append(self._check_stochastic_signal(df))
+        signals.append(self._check_stochastic_signal(decision_df))
         all_reasons.extend(signals[-1][1])
-        signals.append(self._check_candle_patterns(df))
+        signals.append(self._check_candle_patterns(decision_df))
         all_reasons.extend(signals[-1][1])
         weights = [0.15, 0.2, 0.15, 0.15, 0.15, 0.1, 0.15]
         final_signal, confidence = self._calculate_confidence_and_signal(signals, weights)
         if final_signal == SignalType.NEUTRAL:
             return None
-        close = df['close'].iloc[-1]
-        atr = df['atr'].iloc[-1]
+        close = decision_df['close'].iloc[-1]
+        atr = decision_df['atr'].iloc[-1]
         if pd.isna(atr) or atr == 0:
             atr = close * 0.01
-        stop_loss_multiplier = self.config.get('STOP_LOSS_ATR_MULTIPLIER', 2)
-        take_profit_multiplier = self.config.get('TAKE_PROFIT_ATR_MULTIPLIER', 3)
+        stop_loss_multiplier = self.config.get('STOP_LOSS_ATR_MULTIPLIER', 1.25)
+        tp1_multiplier = self.config.get('TP1_ATR_MULTIPLIER', 1.0)
+        tp2_multiplier = self.config.get('TP2_ATR_MULTIPLIER', 1.5)
+        tp3_multiplier = self.config.get('TP3_ATR_MULTIPLIER', 2.0)
         if final_signal in [SignalType.STRONG_BUY, SignalType.BUY, SignalType.WEAK_BUY]:
             entry = close
             stop_loss = close - (atr * stop_loss_multiplier)
-            tp1 = close + (atr * take_profit_multiplier * 0.5)
-            tp2 = close + (atr * take_profit_multiplier * 1.0)
-            tp3 = close + (atr * take_profit_multiplier * 1.5)
+            tp1 = close + (atr * tp1_multiplier)
+            tp2 = close + (atr * tp2_multiplier)
+            tp3 = close + (atr * tp3_multiplier)
         else:
             entry = close
             stop_loss = close + (atr * stop_loss_multiplier)
-            tp1 = close - (atr * take_profit_multiplier * 0.5)
-            tp2 = close - (atr * take_profit_multiplier * 1.0)
-            tp3 = close - (atr * take_profit_multiplier * 1.5)
+            tp1 = close - (atr * tp1_multiplier)
+            tp2 = close - (atr * tp2_multiplier)
+            tp3 = close - (atr * tp3_multiplier)
         # Detect candle patterns
         patterns = CandlePatterns.detect_all_patterns(df, lookback=5)
         candle_patterns = [p.pattern.value for p in patterns if p.pattern.value not in all_reasons]
         
         indicators = {
-            'rsi': df['rsi'].iloc[-1],
-            'macd_line': df['macd_line'].iloc[-1],
-            'macd_signal': df['macd_signal'].iloc[-1],
-            'bb_upper': df['bb_upper'].iloc[-1],
-            'bb_lower': df['bb_lower'].iloc[-1],
+            'rsi': decision_df['rsi'].iloc[-1],
+            'macd_line': decision_df['macd_line'].iloc[-1],
+            'macd_signal': decision_df['macd_signal'].iloc[-1],
+            'bb_upper': decision_df['bb_upper'].iloc[-1],
+            'bb_lower': decision_df['bb_lower'].iloc[-1],
             'atr': atr,
-            'stoch_k': df['stoch_k'].iloc[-1],
-            'stoch_d': df['stoch_d'].iloc[-1],
+            'stoch_k': decision_df['stoch_k'].iloc[-1],
+            'stoch_d': decision_df['stoch_d'].iloc[-1],
         }
         for period in self.config.get('SMA_PERIODS', []):
-            indicators[f'sma_{period}'] = df[f'sma_{period}'].iloc[-1]
+            indicators[f'sma_{period}'] = decision_df[f'sma_{period}'].iloc[-1]
         for period in self.config.get('EMA_PERIODS', []):
-            indicators[f'ema_{period}'] = df[f'ema_{period}'].iloc[-1]
+            indicators[f'ema_{period}'] = decision_df[f'ema_{period}'].iloc[-1]
         
         # Add candle patterns to reasons
         for pattern_name in candle_patterns:
