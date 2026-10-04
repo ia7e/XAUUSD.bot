@@ -104,11 +104,10 @@ class XAUUSBot:
     def _is_buy(signal_type: str) -> bool:
         return signal_type in ['STRONG_BUY', 'BUY', 'WEAK_BUY']
 
-    async def _open_new_signals(self):
-        for timeframe in self.config['TIMEFRAMES']:
-            if timeframe in self.active_signals:
-                continue
-            signal = await self.analyze_timeframe(timeframe)
+    async def _open_new_signal_for_timeframe(self, timeframe: str):
+        if timeframe in self.active_signals:
+            return
+        signal = await self.analyze_timeframe(timeframe)
             if not signal:
                 continue
             if signal.signal_type not in [
@@ -191,8 +190,7 @@ class XAUUSBot:
                 for timeframe in self.config['TIMEFRAMES']:
                     period = TF_SECONDS.get(timeframe)
                     if period and epoch % period == 0:
-                        await self._open_new_signals()
-                        break
+                        await self._open_new_signal_for_timeframe(timeframe)
 
                 await asyncio.sleep(1)
             except asyncio.CancelledError:
