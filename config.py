@@ -2,10 +2,10 @@
 import os
 
 # Telegram Configuration (تم تحديث المسميات لتتوافق مع كود البوت)
-TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', os.getenv('TELEGRAM_TOKEN', '8858345146:AAGPy6Qxtr5k0EV3P_nvCXPaL1aaP_yA5no'))
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', os.getenv('TELEGRAM_TOKEN', ''))
 TELEGRAM_TOKEN = TELEGRAM_BOT_TOKEN
 BOT_TOKEN = TELEGRAM_BOT_TOKEN
-TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '8952278702')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
 
 # Exchange Configuration
 EXCHANGE_ID = os.getenv('EXCHANGE_ID', 'binance')
