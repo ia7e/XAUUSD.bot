@@ -66,7 +66,7 @@ class BIQuoteFetcher:
                     df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0.0).astype(float)
             
             self.logger.info(f"Successfully fetched {len(df)} candles for {self.symbol} ({timeframe}) from BIQuote")
-            return df[cols]
+            return df[cols + (['isOpen'] if 'isOpen' in df.columns else [])]
             
         except Exception as e:
             self.logger.error(f"Failed to fetch OHLCV for {timeframe} from BIQuote: {e}")
@@ -75,6 +75,18 @@ class BIQuoteFetcher:
     def fetch_current_price(self) -> Optional[float]:
         """Fetch current price using the latest candle from BIQuote"""
         try:
+            url = f"{self.base_url}/{self.symbol}"
+            response = requests.get(url, headers=self.headers, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                if isinstance(data, dict):
+                    if 'mid' in data:
+                        return float(data['mid'])
+                    if 'bid' in data and 'ask' in data:
+                        return float((data['bid'] + data['ask']) / 2)
+                    for key in ['price', 'close', 'last']:
+                        if key in data and data[key] not in (None, 0):
+                            return float(data[key])
             df = self.fetch_ohlcv('1m', limit=1)
             if df is not None and not df.empty:
                 return float(df['close'].iloc[-1])
