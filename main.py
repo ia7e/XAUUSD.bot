@@ -108,20 +108,21 @@ class XAUUSBot:
         if timeframe in self.active_signals:
             return
         signal = await self.analyze_timeframe(timeframe)
-            if not signal:
-                continue
-            if signal.signal_type not in [
-                SignalType.STRONG_BUY, SignalType.BUY,
-                SignalType.STRONG_SELL, SignalType.SELL
-            ]:
-                continue
-            data = signal.to_dict()
-            data['tp1_hit'] = False
-            data['tp2_hit'] = False
-            data['protected'] = False
-            data['opened_at'] = datetime.now(timezone.utc).isoformat()
-            self.active_signals[timeframe] = data
-            await self.send_signal_alert(signal)
+        if not signal:
+            return
+        if signal.signal_type not in [
+            SignalType.STRONG_BUY, SignalType.BUY,
+            SignalType.STRONG_SELL, SignalType.SELL
+        ]:
+            return
+        data = signal.to_dict()
+        data['tp1_hit'] = False
+        data['tp2_hit'] = False
+        data['protected'] = False
+        data['opened_at'] = datetime.now(timezone.utc).isoformat()
+        self.active_signals[timeframe] = data
+        self.signal_history.append(signal)
+        await self.send_signal_alert(signal)
 
     async def _monitor_active_signals(self):
         if not self.active_signals:
