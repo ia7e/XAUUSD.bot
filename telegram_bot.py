@@ -58,35 +58,47 @@ class TelegramBot:
         confidence = signal.get('confidence', 0)
         reasons = signal.get('reasons', [])
         candle_patterns = signal.get('candle_patterns', [])
-        
-        emoji_map = {'STRONG_BUY': '🚀🚀🚀', 'BUY': '🚀🚀', 'WEAK_BUY': '🚀', 'STRONG_SELL': '📉📉📉', 'SELL': '📉📉', 'WEAK_SELL': '📉'}
-        emoji = emoji_map.get(signal_type, '⚠️')
-        color = '🟢' if signal_type in ['STRONG_BUY', 'BUY', 'WEAK_BUY'] else '🔴'
-        
-        message = f"""{emoji} <b>NEW XAUUSD SIGNAL</b> {emoji}
+        is_buy = signal_type in ['STRONG_BUY', 'BUY', 'WEAK_BUY']
+        title = '🟢🟢 إشارة شراء الذهب 🟢🟢' if is_buy else '🔴🔴 إشارة بيع الذهب 🔴🔴'
+        direction = 'شراء' if is_buy else 'بيع'
+        message = f"""<b>{title}</b>
 
-<b>Signal:</b> {color} <b>{signal_type}</b>
-<b>Timeframe:</b> {timeframe}
-<b>Confidence:</b> {confidence:.1%}
+📊 الزوج: XAUUSD
+⏱️ الفريم: {timeframe}
+📌 الاتجاه: <b>{direction}</b>
+📈 الثقة: <b>{confidence:.1%}</b>
 
-<b>Entry:</b> ${entry:.4f}
-<b>Stop Loss:</b> ${stop_loss:.4f}
-<b>Take Profit 1:</b> ${tp1:.4f}
-<b>Take Profit 2:</b> ${tp2:.4f}
-<b>Take Profit 3:</b> ${tp3:.4f}
+💰 الدخول: <b>{entry:.4f}</b>
+🛑 وقف الخسارة: <b>{stop_loss:.4f}</b>
 
-<b>Reasons:</b>
+🎯 الهدف الأول TP1: <b>{tp1:.4f}</b>
+🛡️ الهدف الثاني TP2: <b>{tp2:.4f}</b> — عنده يتم تأمين الصفقة
+🎯 الهدف الثالث TP3: <b>{tp3:.4f}</b>
+
+🕯️ تأكيد الشموع:
 """
         for reason in reasons[:5]:
-            message += f"  • {reason}\n"
-        
+            message += f"• {reason}\n"
         if candle_patterns:
-            message += "\n<b>Candle Patterns:</b>\n"
+            message += "\n🕯️ أنماط الشموع:\n"
             for pattern in candle_patterns[:3]:
-                message += f"  • {pattern}\n"
-        
-        message += "\n" + "=" * 40
+                message += f"• {pattern}\n"
+        message += "\n🛡️ التأمين: عند وصول TP2 حرّك وقف الخسارة إلى سعر الدخول.\n⚠️ حالة الإشارة: نشطة"
         return await self.send_message(message)
+
+    async def send_signal_update(self, signal: Dict[str, Any], event: str, current_price: float) -> bool:
+        is_buy = signal.get('signal_type') in ['STRONG_BUY', 'BUY', 'WEAK_BUY']
+        direction = 'شراء' if is_buy else 'بيع'
+        tf = signal.get('timeframe', 'Unknown')
+        if event == 'TP1':
+            text = f"🎯 <b>وصل الهدف الأول</b>\n\n📌 {direction} XAUUSD | {tf}\n💰 السعر: <b>{current_price:.4f}</b>\n⏳ الصفقة مستمرة إلى TP2."
+        elif event == 'TP2':
+            text = f"🛡️ <b>تأمين الصفقة — TP2</b>\n\n📌 {direction} XAUUSD | {tf}\n💰 السعر: <b>{current_price:.4f}</b>\n🔒 حرّك وقف الخسارة إلى سعر الدخول: <b>{signal.get('entry_price', 0):.4f}</b>"
+        elif event == 'TP3':
+            text = f"✅ <b>اكتمل الهدف الثالث TP3</b>\n\n📌 {direction} XAUUSD | {tf}\n💰 السعر: <b>{current_price:.4f}</b>\n📊 الإشارة انتهت."
+        else:
+            text = f"❌ <b>انتهت إشارة {direction}</b>\n\n📌 XAUUSD | {tf}\n💰 السعر: <b>{current_price:.4f}</b>\n🛑 تم الوصول إلى وقف الخسارة."
+        return await self.send_message(text)
 
     async def send_multiple_signals(self, signals: list) -> bool:
         if not signals:
