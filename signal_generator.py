@@ -275,7 +275,7 @@ class SignalGenerator:
 
     def _check_candle_patterns(self, df: pd.DataFrame) -> Tuple[SignalType, List[str], float]:
         """Check for candlestick patterns"""
-        patterns = CandlePatterns.detect_all_patterns(decision_df, lookback=5)
+        patterns = CandlePatterns.detect_all_patterns(df, lookback=5)
         if not patterns:
             return SignalType.NEUTRAL, [], 0.0
         
@@ -306,7 +306,7 @@ class SignalGenerator:
             return SignalType.NEUTRAL, reasons, 0.0
 
     def generate_signal(self, df: pd.DataFrame, timeframe: str) -> Optional[TradingSignal]:
-        decision_candles = int(self.config.get('DECISION_CANDLES', 50))
+        decision_candles = int(self.config.get('DECISION_CANDLES', 10))
         if len(df) < decision_candles:
             return None
         decision_df = df.tail(decision_candles).copy()
