@@ -673,7 +673,7 @@
                         const signalClass = signalType.replace(/\s+/g, '_');
                         const entry = signal.entry_price ? signal.entry_price.toFixed(2) : '-';
                         const confidence = signal.confidence ? (signal.confidence * 100).toFixed(1) : '-';
-                        const timestamp = signal.timestamp || new Date().toISOString();
+                        const timestamp = signal.opened_at || signal.timestamp || new Date().toISOString();
                         const date = new Date(timestamp).toLocaleString('ar-SA');
                         
                         html += `
