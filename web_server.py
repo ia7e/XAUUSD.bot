@@ -11,6 +11,7 @@ from typing import Dict, List, Any, Optional
 import os
 import sys
 import pandas as pd
+import math
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -77,11 +78,32 @@ data_fetcher = DataFetcher(config)
 technical_indicators = TechnicalIndicators()
 signal_generator = SignalGenerator(config)
 
+def _json_safe(value):
+    """Convert pandas/numpy values and non-finite numbers to strict JSON-safe values."""
+    if isinstance(value, dict):
+        return {str(k): _json_safe(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(v) for v in value]
+    if hasattr(value, 'item'):
+        try:
+            return _json_safe(value.item())
+        except Exception:
+            pass
+    if isinstance(value, float):
+        return value if math.isfinite(value) else None
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    return value
+
 def update_bot_state():
     """Update bot state with fresh data"""
     global bot_state
     
     try:
+        bot_state['last_error'] = None
         # Get current price
         current_price = data_fetcher.get_current_price()
         if current_price:
@@ -194,23 +216,25 @@ def get_price():
 @app.route('/api/signals')
 def get_signals():
     """Get current signals"""
-    return jsonify({
+    return jsonify(_json_safe({
         'signals': bot_state['signals'],
-        'count': len(bot_state['signals'])
-    })
+        'count': len(bot_state['signals']),
+        'last_error': bot_state.get('last_error')
+    }))
 
 @app.route('/api/signals/history')
 def get_signal_history():
     """Get signal history"""
-    return jsonify({
+    return jsonify(_json_safe({
         'history': bot_state['signal_history'],
-        'count': len(bot_state['signal_history'])
-    })
+        'count': len(bot_state['signal_history']),
+        'last_error': bot_state.get('last_error')
+    }))
 
 @app.route('/api/statistics')
 def get_statistics():
     """Get trading statistics"""
-    return jsonify(bot_state['statistics'])
+    return jsonify(_json_safe(bot_state['statistics']))
 
 @app.route('/api/timeframes')
 def get_timeframes():
@@ -237,15 +261,16 @@ def get_timeframes():
                 'bb_upper': safe_float(df['bb_upper'].iloc[-1]) if 'bb_upper' in df.columns else None,
                 'bb_lower': safe_float(df['bb_lower'].iloc[-1]) if 'bb_lower' in df.columns else None
             }
-    return jsonify(data)
+    return jsonify(_json_safe(data))
 
 @app.route('/api/patterns')
 def get_patterns():
     """Get detected candle patterns"""
-    return jsonify({
+    return jsonify(_json_safe({
         'patterns': bot_state['candle_patterns'],
-        'count': len(bot_state['candle_patterns'])
-    })
+        'count': len(bot_state['candle_patterns']),
+        'last_error': bot_state.get('last_error')
+    }))
 
 @app.route('/api/status')
 def get_status():
