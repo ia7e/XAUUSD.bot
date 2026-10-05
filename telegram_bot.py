@@ -96,34 +96,21 @@ class TelegramBot:
         tp2 = signal.get('take_profit_2', 0)
         tp3 = signal.get('take_profit_3', 0)
         confidence = signal.get('confidence', 0)
-        reasons = signal.get('reasons', [])
-        candle_patterns = signal.get('candle_patterns', [])
+        patterns = signal.get('candle_patterns', [])
         is_buy = signal_type in ['STRONG_BUY', 'BUY', 'WEAK_BUY']
-        title = '🟢🟢 إشارة شراء الذهب 🟢🟢' if is_buy else '🔴🔴 إشارة بيع الذهب 🔴🔴'
         direction = 'شراء' if is_buy else 'بيع'
-        message = f"""<b>{title}</b>
+        emoji = '🟢' if is_buy else '🔴'
+        pattern = self._translate_reason(patterns[0]) if patterns else 'حركة سعر واضحة'
 
-📊 الزوج: XAUUSD
-⏱️ الفريم: {timeframe}
-📌 الاتجاه: <b>{direction}</b>
-📈 الثقة: <b>{confidence:.1%}</b>
-
-💰 الدخول: <b>{entry:.4f}</b>
-🛑 وقف الخسارة: <b>{stop_loss:.4f}</b>
-
-🎯 الهدف الأول TP1: <b>{tp1:.4f}</b>
-🛡️ الهدف الثاني TP2: <b>{tp2:.4f}</b> — عنده يتم تأمين الصفقة
-🎯 الهدف الثالث TP3: <b>{tp3:.4f}</b>
-
-🕯️ تأكيد الشموع:
-"""
-        for reason in reasons[:5]:
-            message += f"• {self._translate_reason(reason)}\n"
-        if candle_patterns:
-            message += "\n🕯️ أنماط الشموع:\n"
-            for pattern in candle_patterns[:3]:
-                message += f"• {self._translate_reason(pattern)}\n"
-        message += "\n🧠 طريقة القرار: <b>شموع وحركة سعر فقط</b> — بدون RSI أو MACD أو متوسطات.\n🛡️ التأمين: عند وصول TP2 حرّك وقف الخسارة إلى سعر الدخول.\n⚠️ حالة الإشارة: <b>نشطة</b> — لن تُفتح إشارة أخرى حتى تنتهي هذه الإشارة."
+        message = (
+            f"<b>{emoji} XAUUSD | {direction}</b>\n"
+            f"⏱ {timeframe} | 📊 ثقة {confidence:.0%}\n"
+            f"💰 دخول: <b>{entry:.4f}</b>\n"
+            f"🛑 وقف: <b>{stop_loss:.4f}</b>\n"
+            f"🎯 TP1: <b>{tp1:.4f}</b> | TP2: <b>{tp2:.4f}</b> | TP3: <b>{tp3:.4f}</b>\n"
+            f"🕯️ {pattern}\n"
+            f"🔒 الإشارة نشطة — لا توجد إشارة جديدة حتى تنتهي."
+        )
         return await self.send_message(message)
 
     async def send_signal_update(self, signal: Dict[str, Any], event: str, current_price: float) -> bool:
