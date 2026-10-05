@@ -67,7 +67,21 @@ class TelegramBot:
             'EMA trend bearish': 'اتجاه المتوسطات EMA هابط',
             'Stochastic bullish': 'استوكاستك شرائي',
             'Stochastic bearish': 'استوكاستك بيعي',
-            'Candle pattern:': 'نموذج شموع:'
+            'Candle pattern:': 'نموذج شموع:',
+            'HAMMER': 'مطرقة',
+            'INVERTED_HAMMER': 'مطرقة مقلوبة',
+            'BULLISH_ENGULFING': 'ابتلاع شرائي',
+            'PIERCING_LINE': 'خط الاختراق الشرائي',
+            'MORNING_STAR': 'نجمة الصباح',
+            'THREE_WHITE_SOLDIERS': 'ثلاثة جنود بيض',
+            'DRAGONFLY_DOJI': 'دوجي اليعسوب',
+            'SHOOTING_STAR': 'نجمة ساقطة',
+            'HANGING_MAN': 'الرجل المشنوق',
+            'BEARISH_ENGULFING': 'ابتلاع بيعي',
+            'DARK_CLOUD_COVER': 'غطاء السحابة الداكنة',
+            'EVENING_STAR': 'نجمة المساء',
+            'THREE_BLACK_CROWS': 'ثلاثة غربان سوداء',
+            'GRAVESTONE_DOJI': 'دوجي شاهد القبر'
         }
         for old, new in replacements.items():
             s = s.replace(old, new)
@@ -109,7 +123,7 @@ class TelegramBot:
             message += "\n🕯️ أنماط الشموع:\n"
             for pattern in candle_patterns[:3]:
                 message += f"• {self._translate_reason(pattern)}\n"
-        message += "\n🛡️ التأمين: عند وصول TP2 حرّك وقف الخسارة إلى سعر الدخول.\n⚠️ حالة الإشارة: نشطة"
+        message += "\n🧠 طريقة القرار: <b>شموع وحركة سعر فقط</b> — بدون RSI أو MACD أو متوسطات.\n🛡️ التأمين: عند وصول TP2 حرّك وقف الخسارة إلى سعر الدخول.\n⚠️ حالة الإشارة: <b>نشطة</b> — لن تُفتح إشارة أخرى حتى تنتهي هذه الإشارة."
         return await self.send_message(message)
 
     async def send_signal_update(self, signal: Dict[str, Any], event: str, current_price: float) -> bool:
