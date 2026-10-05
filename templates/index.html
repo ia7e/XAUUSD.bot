@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>XAUUSD Trading Bot - Dashboard</title>
+    <title>لوحة تحكم إشارات الذهب XAUUSD</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -337,11 +337,11 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-chart-line"></i> XAUUSD Trading Bot Dashboard</h1>
-            <p>Real-time Analysis & Trading Signals</p>
+            <h1><i class="fas fa-chart-line"></i> لوحة تحكم إشارات الذهب XAUUSD</h1>
+            <p>تحليل مباشر وإشارات تداول</p>
         </header>
         
-        <!-- Price Display -->
+        <!-- السعر Display -->
         <div class="price-display">
             <div class="price-label">سعر XAUUSD الحالي</div>
             <div class="price-value" id="currentPrice">-</div>
@@ -413,7 +413,7 @@
             </div>
         </div>
         
-        <!-- Timeframes Tab -->
+        <!-- الفريمs Tab -->
         <div id="timeframes" class="tab-content">
             <div id="timeframesContent">
                 <div class="loading">
@@ -434,12 +434,20 @@
         </div>
         
         <footer>
-            <p>XAUUSD Trading Bot | Powered by BIQuote API | <i class="fas fa-heart"></i></p>
+            <p>نظام إشارات الذهب XAUUSD | مصدر البيانات: BIQuote | <i class="fas fa-heart"></i></p>
         </footer>
     </div>
     
     <script>
         let currentPrice = 0;
+
+        const signalNames = {STRONG_BUY:"شراء قوي", BUY:"شراء", WEAK_BUY:"شراء", STRONG_SELL:"بيع قوي", SELL:"بيع", WEAK_SELL:"بيع", UNKNOWN:"غير معروف"};
+        const timeframeNames = {"1m":"دقيقة","5m":"5 دقائق","15m":"15 دقيقة","30m":"30 دقيقة","1h":"ساعة","4h":"4 ساعات"};
+        const patternNames = {HAMMER:"المطرقة", INVERTED_HAMMER:"المطرقة المقلوبة", SHOOTING_STAR:"الشهاب", HANGING_MAN:"الرجل المشنوق", DOJI:"دوجي", DRAGONFLY_DOJI:"دوجي اليعسوب", GRAVESTONE_DOJI:"دوجي شاهد القبر", SPINNING_TOP:"قمة دوارة", BULLISH_ENGULFING:"ابتلاع شرائي", BEARISH_ENGULFING:"ابتلاع بيعي", PIERCING_LINE:"خط الاختراق الشرائي", DARK_CLOUD_COVER:"غطاء السحابة الداكنة", MORNING_STAR:"نجمة الصباح", EVENING_STAR:"نجمة المساء", THREE_WHITE_SOLDIERS:"ثلاثة جنود بيض", THREE_BLACK_CROWS:"ثلاث غربان سود"};
+        function translateSignal(v){ return signalNames[v] || v || "غير معروف"; }
+        function translateTimeframe(v){ return timeframeNames[v] || v || "-"; }
+        function translatePattern(v){ return patternNames[v] || String(v || "غير معروف").replace(/_/g," "); }
+        function translateReason(v){ const s=String(v||""); return s.replace(/RSI crossed above oversold \(([^)]+)\)/,"مؤشر RSI اخترق صعودًا منطقة التشبع البيعي ($1)").replace(/RSI crossed below overbought \(([^)]+)\)/,"مؤشر RSI اخترق هبوطًا منطقة التشبع الشرائي ($1)").replace(/RSI in oversold zone \(([^)]+)\)/,"مؤشر RSI في منطقة التشبع البيعي ($1)").replace(/RSI in overbought zone \(([^)]+)\)/,"مؤشر RSI في منطقة التشبع الشرائي ($1)").replace(/MACD bullish crossover/,"تقاطع MACD شرائي").replace(/MACD bearish crossover/,"تقاطع MACD بيعي").replace(/MACD bullish/,"زخم MACD صاعد").replace(/MACD bearish/,"زخم MACD هابط").replace(/Bollinger lower band/,"السعر قرب الحد السفلي لبولينجر").replace(/Bollinger upper band/,"السعر قرب الحد العلوي لبولينجر").replace(/SMA trend bullish/,"اتجاه المتوسطات SMA صاعد").replace(/SMA trend bearish/,"اتجاه المتوسطات SMA هابط").replace(/EMA trend bullish/,"اتجاه المتوسطات EMA صاعد").replace(/EMA trend bearish/,"اتجاه المتوسطات EMA هابط").replace(/Stochastic bullish/,"استوكاستك شرائي").replace(/Stochastic bearish/,"استوكاستك بيعي").replace(/Candle pattern:/,"نموذج شموع:"); return s; }
         
         // Tab switching
         function showTab(tabName) {
@@ -491,7 +499,7 @@
                     currentPrice = data.price;
                 }
             } catch (error) {
-                console.error('Error loading price:', error);
+                console.error('تعذر تحميل السعر:', error);
             }
         }
         
@@ -508,7 +516,7 @@
                 document.getElementById('strongSell').textContent = data.strong_sell;
                 document.getElementById('last24hSignals').textContent = data.last_24h_signals;
             } catch (error) {
-                console.error('Error loading statistics:', error);
+                console.error('تعذر تحميل الإحصاءات:', error);
             }
         }
         
@@ -528,12 +536,12 @@
                         const stopLoss = signal.stop_loss ? signal.stop_loss.toFixed(2) : '-';
                         const tp1 = signal.take_profit_1 ? signal.take_profit_1.toFixed(2) : '-';
                         const confidence = signal.confidence ? (signal.confidence * 100).toFixed(1) : '-';
-                        const reasons = signal.reasons ? signal.reasons.join(', ') : '-';
+                        const reasons = signal.reasons ? signal.reasons.map(translateReason).join('، ') : '-';
                         
                         html += `
                             <tr>
-                                <td>${signal.timeframe || '-'}</td>
-                                <td><span class="signal-badge ${signalClass}">${signalType}</span></td>
+                                <td>${translateTimeframe(signal.timeframe || '-')}</td>
+                                <td><span class="signal-badge ${signalClass}">${translateSignal(signalType)}</span></td>
                                 <td>$${entry}</td>
                                 <td>$${stopLoss}</td>
                                 <td>$${tp1}</td>
@@ -549,8 +557,8 @@
                     document.getElementById('signalsContent').innerHTML = '<p style="text-align: center; color: #a0a0a0; padding: 20px;">لا يوجد إشارات نشطة حاليًا</p>';
                 }
             } catch (error) {
-                console.error('Error loading signals:', error);
-                document.getElementById('signalsContent').innerHTML = '<p style="text-align: center; color: #f44336; padding: 20px;">خطأ في تحميل الإشارات</p>';
+                console.error('تعذر تحميل الإشارات:', error);
+                document.getElementById('signalsContent').innerHTML = '<p style="text-align: center; color: #f44336; padding: 20px;">تعذر تحميل الإشارات — يتم تحديث البيانات تلقائيًا</p>';
             }
         }
         
@@ -563,7 +571,7 @@
                 if (data.patterns && data.patterns.length > 0) {
                     let html = '';
                     data.patterns.forEach(pattern => {
-                        const patternName = pattern.pattern || 'Unknown';
+                        const patternName = pattern.pattern || 'غير معروف';
                         const timeframe = pattern.timeframe || 'Unknown';
                         const confidence = pattern.confidence ? (pattern.confidence * 100).toFixed(1) : '-';
                         
@@ -577,10 +585,10 @@
                         
                         html += `
                             <div class="pattern-card" style="border-left: 4px solid ${color};">
-                                <div class="pattern-name" style="color: ${color};">${patternName.replace(/_/g, ' ')}</div>
+                                <div class="pattern-name" style="color: ${color};">${translatePattern(patternName)}</div>
                                 <div class="pattern-details">
-                                    <strong>Timeframe:</strong> ${timeframe} | 
-                                    <strong>Confidence:</strong> ${confidence}%
+                                    <strong>الفريم:</strong> ${translateTimeframe(timeframe)} | 
+                                    <strong>الثقة:</strong> ${confidence}%
                                 </div>
                             </div>
                         `;
@@ -590,7 +598,7 @@
                     document.getElementById('patternsContent').innerHTML = '<p style="text-align: center; color: #a0a0a0; padding: 20px;">لا يوجد أنماط شموع مكتشفة حاليًا</p>';
                 }
             } catch (error) {
-                console.error('Error loading patterns:', error);
+                console.error('تعذر تحميل أنماط الشموع:', error);
                 document.getElementById('patternsContent').innerHTML = '<p style="text-align: center; color: #f44336; padding: 20px;">خطأ في تحميل أنماط الشموع</p>';
             }
         }
@@ -613,19 +621,19 @@
                                     <span>$${values.close ? values.close.toFixed(2) : '-'}</span>
                                 </div>
                                 <div class="indicator">
-                                    <span>RSI:</span>
+                                    <span>مؤشر RSI:</span>
                                     <span>${values.rsi ? values.rsi.toFixed(2) : '-'}</span>
                                 </div>
                                 <div class="indicator">
-                                    <span>MACD:</span>
+                                    <span>مؤشر MACD:</span>
                                     <span>${values.macd ? values.macd.toFixed(4) : '-'}</span>
                                 </div>
                                 <div class="indicator">
-                                    <span>BB Upper:</span>
+                                    <span>الحد العلوي لبولينجر:</span>
                                     <span>$${values.bb_upper ? values.bb_upper.toFixed(2) : '-'}</span>
                                 </div>
                                 <div class="indicator">
-                                    <span>BB Lower:</span>
+                                    <span>الحد السفلي لبولينجر:</span>
                                     <span>$${values.bb_lower ? values.bb_lower.toFixed(2) : '-'}</span>
                                 </div>
                             </div>
@@ -638,7 +646,7 @@
                     document.getElementById('timeframesContent').innerHTML = '<p style="text-align: center; color: #a0a0a0; padding: 20px;">لا يوجد بيانات للأطر الزمنية</p>';
                 }
             } catch (error) {
-                console.error('Error loading timeframes:', error);
+                console.error('تعذر تحميل الأطر الزمنية:', error);
                 document.getElementById('timeframesContent').innerHTML = '<p style="text-align: center; color: #f44336; padding: 20px;">خطأ في تحميل الأطر الزمنية</p>';
             }
         }
@@ -650,7 +658,7 @@
                 const data = await response.json();
                 
                 if (data.history && data.history.length > 0) {
-                    let html = '<table class="signals-table"><thead><tr><th>التاريخ</th><th>الإطار الزمني</th><th>الإشارة</th><th>السعر</th><th>الثقة</th></tr></thead><tbody>';
+                    let html = '<table class="signals-table"><thead><tr><th>التاريخ</th><th>الفريم</th><th>الإشارة</th><th>السعر</th><th>الثقة</th></tr></thead><tbody>';
                     
                     data.history.forEach(signal => {
                         const signalType = signal.signal_type || 'UNKNOWN';
@@ -663,7 +671,7 @@
                         html += `
                             <tr>
                                 <td>${date}</td>
-                                <td>${signal.timeframe || '-'}</td>
+                                <td>${translateTimeframe(signal.timeframe || '-')}</td>
                                 <td><span class="signal-badge ${signalClass}">${signalType}</span></td>
                                 <td>$${entry}</td>
                                 <td>${confidence}%</td>
@@ -677,7 +685,7 @@
                     document.getElementById('historyContent').innerHTML = '<p style="text-align: center; color: #a0a0a0; padding: 20px;">لا يوجد تاريخ للإشارات</p>';
                 }
             } catch (error) {
-                console.error('Error loading history:', error);
+                console.error('تعذر تحميل سجل الإشارات:', error);
                 document.getElementById('historyContent').innerHTML = '<p style="text-align: center; color: #f44336; padding: 20px;">خطأ في تحميل التاريخ</p>';
             }
         }
