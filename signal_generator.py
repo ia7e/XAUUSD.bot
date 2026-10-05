@@ -12,7 +12,7 @@ import pandas as pd
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass
 from enum import Enum
-from candle_patterns import CandlePatterns, CandlePattern
+from candle_patterns import CandlePatterns
 
 
 class SignalType(Enum):
@@ -64,24 +64,27 @@ class TradingSignal:
 class SignalGenerator:
     """High-selectivity price-action engine using closed candles only."""
 
+    # Use pattern VALUE strings here instead of hard Enum-member references.
+    # This keeps the signal engine robust if candle_patterns.py has an Enum
+    # naming mismatch between deployments.
     BULLISH_PATTERNS = {
-        CandlePattern.HAMMER,
-        CandlePattern.INVERTED_HAMMER,
-        CandlePattern.BULLISH_ENGULFING,
-        CandlePattern.PIERCING_LINE,
-        CandlePattern.MORNING_STAR,
-        CandlePattern.THREE_WHITE_SOLDIERS,
-        CandlePattern.DRAGONFLY_DOJI,
+        "HAMMER",
+        "INVERTED_HAMMER",
+        "BULLISH_ENGULFING",
+        "PIERCING_LINE",
+        "MORNING_STAR",
+        "THREE_WHITE_SOLDIERS",
+        "DRAGONFLY_DOJI",
     }
 
     BEARISH_PATTERNS = {
-        CandlePattern.SHOOTING_STAR,
-        CandlePattern.HANGING_MAN,
-        CandlePattern.BEARISH_ENGULFING,
-        CandlePattern.DARK_CLOUD_COVER,
-        CandlePattern.EVENING_STAR,
-        CandlePattern.THREE_BLACK_CROWS,
-        CandlePattern.GRAVESTONE_DOJI,
+        "SHOOTING_STAR",
+        "HANGING_MAN",
+        "BEARISH_ENGULFING",
+        "DARK_CLOUD_COVER",
+        "EVENING_STAR",
+        "THREE_BLACK_CROWS",
+        "GRAVESTONE_DOJI",
     }
 
     def __init__(self, config: Dict[str, Any]):
@@ -138,7 +141,7 @@ class SignalGenerator:
         return [
             p for p in patterns
             if p.candle_index == last_index
-            and p.pattern in (self.BULLISH_PATTERNS | self.BEARISH_PATTERNS)
+            and p.pattern.value in (self.BULLISH_PATTERNS | self.BEARISH_PATTERNS)
         ]
 
     def _price_action_score(
@@ -155,8 +158,24 @@ class SignalGenerator:
 
         # Strong named candle pattern is the primary evidence.
         matching = []
+        pattern_strengths = {
+            "HAMMER": ("BULLISH", 0.80),
+            "INVERTED_HAMMER": ("BULLISH", 0.75),
+            "BULLISH_ENGULFING": ("BULLISH", 0.85),
+            "PIERCING_LINE": ("BULLISH", 0.80),
+            "MORNING_STAR": ("BULLISH", 0.90),
+            "THREE_WHITE_SOLDIERS": ("BULLISH", 0.85),
+            "DRAGONFLY_DOJI": ("BULLISH", 0.75),
+            "SHOOTING_STAR": ("BEARISH", 0.80),
+            "HANGING_MAN": ("BEARISH", 0.75),
+            "BEARISH_ENGULFING": ("BEARISH", 0.85),
+            "DARK_CLOUD_COVER": ("BEARISH", 0.80),
+            "EVENING_STAR": ("BEARISH", 0.90),
+            "THREE_BLACK_CROWS": ("BEARISH", 0.85),
+            "GRAVESTONE_DOJI": ("BEARISH", 0.75),
+        }
         for pattern in patterns:
-            signal, strength = CandlePatterns.get_pattern_signal_strength(pattern.pattern)
+            signal, strength = pattern_strengths.get(pattern.pattern.value, ("NEUTRAL", 0.0))
             if (direction == 1 and signal == "BULLISH") or (direction == -1 and signal == "BEARISH"):
                 matching.append((pattern, strength))
 
@@ -270,10 +289,10 @@ class SignalGenerator:
         patterns = self._latest_patterns(decision_df)
         pattern_dirs = set()
         for p in patterns:
-            signal, _ = CandlePatterns.get_pattern_signal_strength(p.pattern)
-            if signal == "BULLISH":
+            pattern_name = p.pattern.value
+            if pattern_name in self.BULLISH_PATTERNS:
                 pattern_dirs.add(1)
-            elif signal == "BEARISH":
+            elif pattern_name in self.BEARISH_PATTERNS:
                 pattern_dirs.add(-1)
 
         # Conflicting reversal candles = NO TRADE.
@@ -343,8 +362,8 @@ class SignalGenerator:
         )
 
         candle_patterns = [p.pattern.value for p in patterns if (
-            (direction == 1 and p.pattern in self.BULLISH_PATTERNS)
-            or (direction == -1 and p.pattern in self.BEARISH_PATTERNS)
+            (direction == 1 and p.pattern.value in self.BULLISH_PATTERNS)
+            or (direction == -1 and p.pattern.value in self.BEARISH_PATTERNS)
         )]
 
         # This engine intentionally exposes no indicator values.
