@@ -3,7 +3,8 @@ import asyncio
 import logging
 import os
 import sys
-from datetime import datetime, timezone
+import pandas as pd
+from datetime import datetime, timezone, timedelta
 from typing import Dict, List, Any, Optional
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -72,17 +73,55 @@ class XAUUSBot:
         except Exception as e:
             logger.error(f"Connection check failed: {e}")
 
-    def _closed_candles(self, df):
+    def _closed_candles(self, df, timeframe: str):
         if df is None or len(df) < DECISION_CANDLES:
             return None
-        # BIQuote exposes isOpen when available; otherwise conservatively ignore the last bar.
+
+        df = df.copy()
+        try:
+            df.index = pd.to_datetime(df.index, utc=True)
+            df = df.sort_index()
+        except Exception:
+            return None
+
         if 'isOpen' in df.columns and bool(df['isOpen'].iloc[-1]):
-            return df.iloc[:-1].copy()
-        return df.copy()
+            df = df.iloc[:-1].copy()
+
+        if len(df) < DECISION_CANDLES:
+            return None
+
+        seconds = TF_SECONDS.get(timeframe)
+        if not seconds:
+            return None
+
+        now = datetime.now(timezone.utc)
+        last_open = df.index[-1].to_pydatetime()
+        if last_open.tzinfo is None:
+            last_open = last_open.replace(tzinfo=timezone.utc)
+
+        candle_close = last_open + timedelta(seconds=seconds)
+        age = (now - candle_close).total_seconds()
+
+        # Reject genuinely old candles returned by BIQuote.
+        if age > max(15, seconds * 1.25):
+            logger.warning(
+                f"{timeframe}: stale BIQuote candle rejected; "
+                f"last_close={candle_close.isoformat()} age={age:.1f}s"
+            )
+            return None
+
+        if age < -10:
+            logger.warning(
+                f"{timeframe}: future BIQuote candle rejected; "
+                f"last_open={last_open.isoformat()}"
+            )
+            return None
+
+        return df
 
     async def analyze_timeframe(self, timeframe: str) -> Optional[TradingSignal]:
         df = self.data_fetcher.fetch_ohlcv(timeframe, self.config['CANDLES_COUNT'])
-        df = self._closed_candles(df)
+        df = self._closed_candles(df, timeframe)
         if df is None or len(df) < DECISION_CANDLES:
             return None
 
@@ -93,6 +132,22 @@ class XAUUSBot:
         # Candle engine uses raw OHLC only. Indicators are intentionally not calculated.
         signal = self.signal_generator.generate_signal(df, timeframe)
         self.last_processed_candle[timeframe] = candle_id
+
+        # The candle decides direction/setup; live price is the actionable entry.
+        if signal:
+            live_price = self.data_fetcher.get_current_price()
+            if live_price is not None and float(live_price) > 0:
+                signal.entry_price = float(live_price)
+                risk = abs(signal.entry_price - signal.stop_loss)
+                if risk > 0:
+                    if self._is_buy(signal.signal_type.value):
+                        signal.take_profit_1 = signal.entry_price + risk
+                        signal.take_profit_2 = signal.entry_price + risk * 1.5
+                        signal.take_profit_3 = signal.entry_price + risk * 2.0
+                    else:
+                        signal.take_profit_1 = signal.entry_price - risk
+                        signal.take_profit_2 = signal.entry_price - risk * 1.5
+                        signal.take_profit_3 = signal.entry_price - risk * 2.0
 
         if signal:
             logger.info(f"{timeframe}: {signal.signal_type.value} confidence={signal.confidence:.1%}")
