@@ -90,7 +90,7 @@ class XAUUSBot:
         if self.last_processed_candle.get(timeframe) == candle_id:
             return None
 
-        df = self.technical_indicators.calculate_all_indicators(df, self.config)
+        # Candle engine uses raw OHLC only. Indicators are intentionally not calculated.
         signal = self.signal_generator.generate_signal(df, timeframe)
         self.last_processed_candle[timeframe] = candle_id
 
@@ -98,9 +98,11 @@ class XAUUSBot:
             logger.info(f"{timeframe}: {signal.signal_type.value} confidence={signal.confidence:.1%}")
         return signal
 
-    async def send_signal_alert(self, signal: TradingSignal):
-        if self.telegram_bot:
-            await self.telegram_bot.send_signal_alert(signal.to_dict())
+    async def send_signal_alert(self, signal: TradingSignal) -> bool:
+        if not self.telegram_bot:
+            logger.error("Telegram is not initialized; signal cannot be sent")
+            return False
+        return await self.telegram_bot.send_signal_alert(signal.to_dict())
 
     async def send_signal_update(self, signal_data: Dict[str, Any], event: str, price: float):
         if self.telegram_bot:
@@ -110,25 +112,42 @@ class XAUUSBot:
     def _is_buy(signal_type: str) -> bool:
         return signal_type in ['STRONG_BUY', 'BUY', 'WEAK_BUY']
 
-    async def _open_new_signal_for_timeframe(self, timeframe: str):
-        if timeframe in self.active_signals:
+    async def _open_best_signal(self):
+        """Find the strongest NEW candle setup and allow only one global active signal."""
+        if self.active_signals:
             return
-        signal = await self.analyze_timeframe(timeframe)
-        if not signal:
+
+        candidates = []
+        for timeframe in self.config['TIMEFRAMES']:
+            try:
+                signal = await self.analyze_timeframe(timeframe)
+                if signal and signal.signal_type in [
+                    SignalType.STRONG_BUY, SignalType.BUY,
+                    SignalType.STRONG_SELL, SignalType.SELL
+                ]:
+                    candidates.append(signal)
+            except Exception as e:
+                logger.error(f"Candle analysis failed for {timeframe}: {e}", exc_info=True)
+
+        if not candidates:
             return
-        if signal.signal_type not in [
-            SignalType.STRONG_BUY, SignalType.BUY,
-            SignalType.STRONG_SELL, SignalType.SELL
-        ]:
-            return
+
+        # If more than one timeframe confirms a setup, use the highest-confidence one.
+        signal = max(candidates, key=lambda s: s.confidence)
         data = signal.to_dict()
         data['tp1_hit'] = False
         data['tp2_hit'] = False
         data['protected'] = False
         data['opened_at'] = datetime.now(timezone.utc).isoformat()
-        self.active_signals[timeframe] = data
+        self.active_signals = {signal.timeframe: data}
         self.signal_history.append(signal)
-        await self.send_signal_alert(signal)
+
+        sent = await self.send_signal_alert(signal)
+        if sent is False:
+            logger.error(
+                f"Telegram signal delivery failed for {signal.timeframe} "
+                f"{signal.signal_type.value}"
+            )
 
     async def _monitor_active_signals(self):
         if not self.active_signals:
@@ -186,24 +205,23 @@ class XAUUSBot:
 
     async def run(self):
         self.running = True
-        # First pass immediately on startup; do not wait for the next exact candle boundary.
-        for timeframe in self.config['TIMEFRAMES']:
-            try:
-                await self._open_new_signal_for_timeframe(timeframe)
-            except Exception as e:
-                logger.error(f'Initial analysis failed for {timeframe}: {e}', exc_info=True)
+        # Scan all timeframes once at startup and open at most ONE signal globally.
+        await self._open_best_signal()
         while self.running:
             try:
-                # Every second: only price + active signal monitoring.
+                # Every second: only price + active-signal monitoring.
                 await self._monitor_active_signals()
 
                 # New-candle analysis is scheduled by timeframe, not every second.
-                now = datetime.now(timezone.utc)
-                epoch = int(now.timestamp())
-                for timeframe in self.config['TIMEFRAMES']:
-                    period = TF_SECONDS.get(timeframe)
-                    if period and epoch % period == 0:
-                        await self._open_new_signal_for_timeframe(timeframe)
+                # If a signal is active, absolutely no second signal can be opened.
+                if not self.active_signals:
+                    now = datetime.now(timezone.utc)
+                    epoch = int(now.timestamp())
+                    if any(
+                        TF_SECONDS.get(tf) and epoch % TF_SECONDS[tf] == 0
+                        for tf in self.config['TIMEFRAMES']
+                    ):
+                        await self._open_best_signal()
 
                 await asyncio.sleep(1)
             except asyncio.CancelledError:
