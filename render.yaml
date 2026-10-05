@@ -11,7 +11,7 @@ service: web
 build: pip install -r requirements.txt
 
 # Start command - Run both bot and web server
-start: python main.py
+start: python run_web_server.py
 
 # Environment variables
 env:
