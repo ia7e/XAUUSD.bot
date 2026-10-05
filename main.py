@@ -57,9 +57,14 @@ class XAUUSBot:
             self.telegram_bot = TelegramBot(self.config['TELEGRAM_TOKEN'], self.config['TELEGRAM_CHAT_ID'])
             try:
                 await self.telegram_bot.initialize()
+                sent = await self.telegram_bot.send_message('🟢 <b>تم تشغيل النظام</b>\n\n🤖 نظام إشارات XAUUSD يعمل الآن.\n📡 مصدر البيانات: BIQuote\n⏱️ المراقبة: كل ثانية\n📊 اتخاذ القرار: 50 شمعة مغلقة')
+                if not sent:
+                    logger.error('Telegram startup message could not be sent')
             except Exception as e:
                 logger.error(f"Telegram initialization failed: {e}")
                 self.telegram_bot = None
+        else:
+            logger.error('Telegram is DISABLED: TELEGRAM_TOKEN or TELEGRAM_CHAT_ID is missing.')
         try:
             if self.data_fetcher.check_exchange_connection():
                 logger.info("BIQuote connection established")
@@ -180,6 +185,12 @@ class XAUUSBot:
 
     async def run(self):
         self.running = True
+        # First pass immediately on startup; do not wait for the next exact candle boundary.
+        for timeframe in self.config['TIMEFRAMES']:
+            try:
+                await self._open_new_signal_for_timeframe(timeframe)
+            except Exception as e:
+                logger.error(f'Initial analysis failed for {timeframe}: {e}', exc_info=True)
         while self.running:
             try:
                 # Every second: only price + active signal monitoring.
