@@ -260,13 +260,13 @@ class SignalGenerator:
         total_possible = total_weight * 1.5
         if net_score > total_possible * self.config.get('STRONG_BUY_THRESHOLD', 0.7):
             return SignalType.STRONG_BUY, net_score / total_possible
-        elif net_score > total_possible * 0.4:
+        elif net_score > total_possible * self.config.get('BUY_THRESHOLD', 0.22):
             return SignalType.BUY, net_score / total_possible
         elif net_score > total_possible * 0.1:
             return SignalType.WEAK_BUY, net_score / total_possible
         elif net_score < -total_possible * self.config.get('STRONG_SELL_THRESHOLD', 0.7):
             return SignalType.STRONG_SELL, abs(net_score) / total_possible
-        elif net_score < -total_possible * 0.4:
+        elif net_score < -total_possible * self.config.get('SELL_THRESHOLD', 0.22):
             return SignalType.SELL, abs(net_score) / total_possible
         elif net_score < -total_possible * 0.1:
             return SignalType.WEAK_SELL, abs(net_score) / total_possible
