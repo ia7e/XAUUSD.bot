@@ -49,7 +49,7 @@ class XAUUSBot:
         self.telegram_bot = None
         self.active_signals: Dict[str, Dict[str, Any]] = {}
         self.last_processed_candle: Dict[str, Any] = {}
-        self.signal_history: List[TradingSignal] = []
+        self.signal_history: List[Dict[str, Any]] = []
         self.running = False
 
     async def initialize(self):
@@ -140,7 +140,7 @@ class XAUUSBot:
         data['protected'] = False
         data['opened_at'] = datetime.now(timezone.utc).isoformat()
         self.active_signals = {signal.timeframe: data}
-        self.signal_history.append(signal)
+        self.signal_history.append(data.copy())
 
         sent = await self.send_signal_alert(signal)
         if sent is False:
