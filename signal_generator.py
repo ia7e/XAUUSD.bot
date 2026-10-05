@@ -246,18 +246,18 @@ class SignalGenerator:
         if rng <= 0:
             return None
 
-        lookback = df.iloc[-8:]
+        lookback = df.iloc[-12:]
         entry = float(last["close"])
 
         # Structure-based stop: place the SL beyond the real recent swing,
-        # with enough room for normal candle noise. No ATR/indicator is used.
+        # with a wider candle-range buffer for XAUUSD noise. No ATR/indicator is used.
         recent_ranges = (lookback["high"].astype(float) - lookback["low"].astype(float)).tolist()
         recent_ranges = [x for x in recent_ranges if x > 0]
         typical_range = sorted(recent_ranges)[len(recent_ranges) // 2] if recent_ranges else rng
 
-        # The buffer is tied to the actual recent candle ranges, not a fixed
-        # dollar amount. This prevents unrealistically tight $1-$2 stops.
-        buffer = max(rng * 0.35, typical_range * 0.75)
+        # The buffer is tied to the latest candle ranges, not a fixed dollar amount.
+        # The wider multiplier prevents unrealistically tight stops on gold.
+        buffer = max(rng * 0.75, typical_range * 1.25)
 
         if direction == 1:
             swing = float(lookback["low"].min())
