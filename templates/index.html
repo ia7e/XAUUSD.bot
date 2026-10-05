@@ -523,7 +523,11 @@
         // Load signals
         async function loadSignals() {
             try {
-                const response = await fetch('/api/signals');
+                const response = await fetch('/api/signals', {cache: 'no-store'});
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || ('HTTP ' + response.status));
+                }
                 const data = await response.json();
                 
                 if (data.signals && data.signals.length > 0) {
@@ -558,7 +562,7 @@
                 }
             } catch (error) {
                 console.error('تعذر تحميل الإشارات:', error);
-                document.getElementById('signalsContent').innerHTML = '<p style="text-align: center; color: #f44336; padding: 20px;">تعذر تحميل الإشارات — يتم تحديث البيانات تلقائيًا</p>';
+                document.getElementById('signalsContent').innerHTML = '<p style="text-align: center; color: #f44336; padding: 20px;">تعذر تحميل الإشارات — يتم تحديث البيانات تلقائيًا</p><p style="text-align:center;color:#a0a0a0;font-size:.85em;">' + (error.message || '') + '</p>';
             }
         }
         
@@ -654,7 +658,11 @@
         // Load history
         async function loadHistory() {
             try {
-                const response = await fetch('/api/signals/history');
+                const response = await fetch('/api/signals/history', {cache: 'no-store'});
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || ('HTTP ' + response.status));
+                }
                 const data = await response.json();
                 
                 if (data.history && data.history.length > 0) {
@@ -672,7 +680,7 @@
                             <tr>
                                 <td>${date}</td>
                                 <td>${translateTimeframe(signal.timeframe || '-')}</td>
-                                <td><span class="signal-badge ${signalClass}">${signalType}</span></td>
+                                <td><span class="signal-badge ${signalClass}">${translateSignal(signalType)}</span></td>
                                 <td>$${entry}</td>
                                 <td>${confidence}%</td>
                             </tr>
@@ -686,7 +694,7 @@
                 }
             } catch (error) {
                 console.error('تعذر تحميل سجل الإشارات:', error);
-                document.getElementById('historyContent').innerHTML = '<p style="text-align: center; color: #f44336; padding: 20px;">خطأ في تحميل التاريخ</p>';
+                document.getElementById('historyContent').innerHTML = '<p style="text-align: center; color: #f44336; padding: 20px;">تعذر تحميل تاريخ الإشارات — يتم تحديث البيانات تلقائيًا</p><p style="text-align:center;color:#a0a0a0;font-size:.85em;">' + (error.message || '') + '</p>';
             }
         }
         
