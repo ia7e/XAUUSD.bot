@@ -38,7 +38,8 @@ bot_state = {
         'last_1h_signals': 0
     },
     'timeframes_data': {},
-    'candle_patterns': []
+    'candle_patterns': [],
+    'last_error': None
 }
 
 # Initialize components
@@ -49,6 +50,11 @@ config = {
     'SYMBOL': SYMBOL,
     'TIMEFRAMES': TIMEFRAMES,
     'CANDLES_COUNT': CANDLES_COUNT,
+    'DECISION_CANDLES': DECISION_CANDLES,
+    'BUY_THRESHOLD': BUY_THRESHOLD,
+    'SELL_THRESHOLD': SELL_THRESHOLD,
+    'STRONG_BUY_THRESHOLD': STRONG_BUY_THRESHOLD,
+    'STRONG_SELL_THRESHOLD': STRONG_SELL_THRESHOLD,
     'RSI_PERIOD': RSI_PERIOD,
     'RSI_OVERBOUGHT': RSI_OVERBOUGHT,
     'RSI_OVERSOLD': RSI_OVERSOLD,
@@ -91,6 +97,10 @@ def update_bot_state():
         
         for timeframe, df in data_dict.items():
             if df is not None and len(df) > 0:
+                if 'isOpen' in df.columns and bool(df['isOpen'].iloc[-1]):
+                    df = df.iloc[:-1].copy()
+                if len(df) < DECISION_CANDLES:
+                    continue;
                 # Calculate indicators
                 df_with_indicators = technical_indicators.calculate_all_indicators(df, config)
                 timeframes_data[timeframe] = df_with_indicators
@@ -152,6 +162,7 @@ def update_bot_state():
         return True
     except Exception as e:
         print(f"Error updating bot state: {e}")
+        bot_state['last_error'] = str(e)
         return False
 
 def background_updater():
@@ -245,7 +256,9 @@ def get_status():
         'last_updated': bot_state['last_updated'],
         'active_signals': len(bot_state['signals']),
         'total_signals': bot_state['statistics']['total_signals'],
-        'data_source': config.get('XAUUSD_SOURCE', 'Unknown')
+        'data_source': config.get('XAUUSD_SOURCE', 'BIQUOTE'),
+        'decision_candles': DECISION_CANDLES,
+        'last_error': bot_state.get('last_error')
     })
 
 if __name__ == '__main__':
