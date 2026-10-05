@@ -23,6 +23,14 @@ from candle_patterns import CandlePatterns
 
 app = Flask(__name__, template_folder='templates', static_folder='static')
 
+trading_bot = None
+
+
+def set_trading_bot(bot):
+    """Connect the dashboard to the one real bot instance used for Telegram/lifecycle."""
+    global trading_bot
+    trading_bot = bot
+
 # Global state
 bot_state = {
     'current_price': None,
@@ -137,50 +145,44 @@ def update_bot_state():
         bot_state['timeframes_data'] = timeframes_data
         bot_state['candle_patterns'] = all_patterns
         
-        # Generate signals and convert them safely to dicts
-        raw_signals = signal_generator.generate_signals_all_timeframes(timeframes_data)
-        signals_dicts = [s.to_dict() if hasattr(s, 'to_dict') else vars(s) for s in raw_signals]
+        # The dashboard displays the SAME active signal that is sent to Telegram.
+        # It never creates/duplicates a new signal every refresh.
+        if trading_bot is not None:
+            signals_dicts = list(trading_bot.active_signals.values())
+            history_dicts = list(trading_bot.signal_history)
+        else:
+            raw_signals = signal_generator.generate_signals_all_timeframes(timeframes_data)
+            signals_dicts = [s.to_dict() if hasattr(s, 'to_dict') else vars(s) for s in raw_signals]
+            history_dicts = bot_state.get('signal_history', [])
+
         bot_state['signals'] = signals_dicts
-        
-        # Update statistics using dictionary keys safely
-        total_signals = len(bot_state['signal_history']) + len(signals_dicts)
-        
-        buy_signals = len([s for s in signals_dicts if 'BUY' in s.get('signal_type', '')]) + \
-                      len([s for s in bot_state['signal_history'] if 'BUY' in s.get('signal_type', '')])
-                      
-        sell_signals = len([s for s in signals_dicts if 'SELL' in s.get('signal_type', '')]) + \
-                       len([s for s in bot_state['signal_history'] if 'SELL' in s.get('signal_type', '')])
-        
-        strong_buy = len([s for s in signals_dicts if s.get('signal_type') == 'STRONG_BUY']) + \
-                     len([s for s in bot_state['signal_history'] if s.get('signal_type') == 'STRONG_BUY'])
-                     
-        strong_sell = len([s for s in signals_dicts if s.get('signal_type') == 'STRONG_SELL']) + \
-                      len([s for s in bot_state['signal_history'] if s.get('signal_type') == 'STRONG_SELL'])
-        
-        # Add new signals to history
-        bot_state['signal_history'] = signals_dicts + bot_state['signal_history']
-        if len(bot_state['signal_history']) > 100:
-            bot_state['signal_history'] = bot_state['signal_history'][:100]
-        
-        # Helper to check timestamp cutoff
-        def is_last_24h(ts_str):
+        bot_state['signal_history'] = history_dicts[-100:]
+
+        def is_last_hours(ts_str, hours):
             try:
                 if not ts_str:
                     return False
-                return datetime.fromisoformat(str(ts_str)) > datetime.now() - timedelta(hours=24)
+                parsed = datetime.fromisoformat(str(ts_str).replace('Z', '+00:00'))
+                now = datetime.now(parsed.tzinfo) if parsed.tzinfo else datetime.now()
+                return parsed > now - timedelta(hours=hours)
             except Exception:
                 return False
 
+        all_history = bot_state['signal_history']
+        buy_signals = len([s for s in all_history if 'BUY' in s.get('signal_type', '')])
+        sell_signals = len([s for s in all_history if 'SELL' in s.get('signal_type', '')])
+        strong_buy = len([s for s in all_history if s.get('signal_type') == 'STRONG_BUY'])
+        strong_sell = len([s for s in all_history if s.get('signal_type') == 'STRONG_SELL'])
+
         bot_state['statistics'] = {
-            'total_signals': total_signals,
+            'total_signals': len(all_history),
             'buy_signals': buy_signals,
             'sell_signals': sell_signals,
             'strong_buy': strong_buy,
             'strong_sell': strong_sell,
-            'last_24h_signals': len([s for s in bot_state['signal_history'] if is_last_24h(s.get('timestamp'))]),
-            'last_1h_signals': len(signals_dicts)
-        }
-        
+            'last_24h_signals': len([s for s in all_history if is_last_hours(s.get('opened_at') or s.get('timestamp'), 24)]),
+            'last_1h_signals': len([s for s in all_history if is_last_hours(s.get('opened_at') or s.get('timestamp'), 1)])
+        }        
         return True
     except Exception as e:
         print(f"Error updating bot state: {e}")
