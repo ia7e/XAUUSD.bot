@@ -47,6 +47,32 @@ class TelegramBot:
             self.logger.error(f"Failed to send Telegram message: {e}")
             return False
 
+    @staticmethod
+    def _translate_reason(reason: str) -> str:
+        s = str(reason or '')
+        replacements = {
+            'RSI crossed above oversold': 'مؤشر RSI اخترق صعودًا منطقة التشبع البيعي',
+            'RSI crossed below overbought': 'مؤشر RSI اخترق هبوطًا منطقة التشبع الشرائي',
+            'RSI in oversold zone': 'مؤشر RSI في منطقة التشبع البيعي',
+            'RSI in overbought zone': 'مؤشر RSI في منطقة التشبع الشرائي',
+            'MACD bullish crossover': 'تقاطع MACD شرائي',
+            'MACD bearish crossover': 'تقاطع MACD بيعي',
+            'MACD bullish': 'زخم MACD صاعد',
+            'MACD bearish': 'زخم MACD هابط',
+            'Bollinger lower band': 'السعر قرب الحد السفلي لبولينجر',
+            'Bollinger upper band': 'السعر قرب الحد العلوي لبولينجر',
+            'SMA trend bullish': 'اتجاه المتوسطات SMA صاعد',
+            'SMA trend bearish': 'اتجاه المتوسطات SMA هابط',
+            'EMA trend bullish': 'اتجاه المتوسطات EMA صاعد',
+            'EMA trend bearish': 'اتجاه المتوسطات EMA هابط',
+            'Stochastic bullish': 'استوكاستك شرائي',
+            'Stochastic bearish': 'استوكاستك بيعي',
+            'Candle pattern:': 'نموذج شموع:'
+        }
+        for old, new in replacements.items():
+            s = s.replace(old, new)
+        return s
+
     async def send_signal_alert(self, signal: Dict[str, Any]) -> bool:
         signal_type = signal.get('signal_type', 'UNKNOWN')
         timeframe = signal.get('timeframe', 'Unknown')
@@ -78,11 +104,11 @@ class TelegramBot:
 🕯️ تأكيد الشموع:
 """
         for reason in reasons[:5]:
-            message += f"• {reason}\n"
+            message += f"• {self._translate_reason(reason)}\n"
         if candle_patterns:
             message += "\n🕯️ أنماط الشموع:\n"
             for pattern in candle_patterns[:3]:
-                message += f"• {pattern}\n"
+                message += f"• {self._translate_reason(pattern)}\n"
         message += "\n🛡️ التأمين: عند وصول TP2 حرّك وقف الخسارة إلى سعر الدخول.\n⚠️ حالة الإشارة: نشطة"
         return await self.send_message(message)
 
