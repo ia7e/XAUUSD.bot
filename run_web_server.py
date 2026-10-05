@@ -7,7 +7,7 @@ import logging
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from web_server import app
+from web_server import app, set_trading_bot
 from main import XAUUSBot
 
 logging.basicConfig(level=logging.INFO)
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 def run_trading_bot():
     async def runner():
         bot = XAUUSBot()
+        set_trading_bot(bot)
         await bot.initialize()
         await bot.run()
     asyncio.run(runner())
