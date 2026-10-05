@@ -117,10 +117,10 @@ class TelegramBot:
         return await self.send_message(message)
 
     async def _start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("🚀 <b>XAUUSD Trading Bot</b> 🚀\n\nWelcome to the professional XAUUSD trading signal bot!\n\nThis bot analyzes 600 candles across multiple timeframes (1m, 5m, 15m, 30m, 1h, 4h)\nand provides high-confidence trading signals with entry, stop loss, and take profit levels.\n\nAvailable commands:\n/start - Show this message\n/status - Show bot status\n/signals - Show recent signals\n/help - Show help\n\nSignals are sent automatically when detected!", parse_mode='HTML')
+        await update.message.reply_text("🚀 <b>XAUUSD Trading Bot</b> 🚀\n\nWelcome to the professional XAUUSD trading signal bot!\n\nThis bot loads 600 candles across multiple timeframes (1m, 5m, 15m, 30m, 1h, 4h)\nand makes the signal decision using the latest 10 closed candles.\n\nAvailable commands:\n/start - Show this message\n/status - Show bot status\n/signals - Show recent signals\n/help - Show help\n\nSignals are sent automatically when detected!", parse_mode='HTML')
 
     async def _status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("🤖 <b>Bot Status</b> 🤖\n\n✅ Running and monitoring XAUUSD\n✅ Analyzing all timeframes\n✅ Ready to send signals\n\nNext analysis in a few seconds...", parse_mode='HTML')
+        await update.message.reply_text("🤖 <b>Bot Status</b> 🤖\n\n✅ Running and monitoring XAUUSD\n✅ Analyzing all timeframes\n✅ Ready to send signals\n\nDecision uses the latest 10 closed candles.", parse_mode='HTML')
 
     async def _signals_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("📊 <b>Recent Signals</b> 📊\n\nFetching latest signals...\nCheck back soon for active signals!", parse_mode='HTML')
