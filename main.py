@@ -34,6 +34,7 @@ class XAUUSBot:
             'BOLLINGER_PERIOD': BOLLINGER_PERIOD, 'BOLLINGER_STD': BOLLINGER_STD,
             'SMA_PERIODS': SMA_PERIODS, 'EMA_PERIODS': EMA_PERIODS,
             'STRONG_BUY_THRESHOLD': STRONG_BUY_THRESHOLD, 'STRONG_SELL_THRESHOLD': STRONG_SELL_THRESHOLD,
+            'BUY_THRESHOLD': BUY_THRESHOLD, 'SELL_THRESHOLD': SELL_THRESHOLD,
             'RISK_PER_TRADE': RISK_PER_TRADE,
             'STOP_LOSS_ATR_MULTIPLIER': STOP_LOSS_ATR_MULTIPLIER,
             'TAKE_PROFIT_ATR_MULTIPLIER': TAKE_PROFIT_ATR_MULTIPLIER,
@@ -57,7 +58,7 @@ class XAUUSBot:
             self.telegram_bot = TelegramBot(self.config['TELEGRAM_TOKEN'], self.config['TELEGRAM_CHAT_ID'])
             try:
                 await self.telegram_bot.initialize()
-                sent = await self.telegram_bot.send_message('🟢 <b>تم تشغيل النظام</b>\n\n🤖 نظام إشارات XAUUSD يعمل الآن.\n📡 مصدر البيانات: BIQuote\n⏱️ المراقبة: كل ثانية\n📊 اتخاذ القرار: 50 شمعة مغلقة')
+                sent = await self.telegram_bot.send_message('🟢 <b>تم تشغيل النظام</b>\n\n🤖 نظام إشارات XAUUSD يعمل الآن.\n📡 مصدر البيانات: BIQuote\n⏱️ المراقبة: كل ثانية\n📊 اتخاذ القرار: آخر 10 شموع مغلقة')
                 if not sent:
                     logger.error('Telegram startup message could not be sent')
             except Exception as e:
