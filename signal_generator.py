@@ -246,9 +246,18 @@ class SignalGenerator:
         if rng <= 0:
             return None
 
-        lookback = df.iloc[-5:]
-        buffer = max(rng * 0.20, body * 0.10)
+        lookback = df.iloc[-8:]
         entry = float(last["close"])
+
+        # Structure-based stop: place the SL beyond the real recent swing,
+        # with enough room for normal candle noise. No ATR/indicator is used.
+        recent_ranges = (lookback["high"].astype(float) - lookback["low"].astype(float)).tolist()
+        recent_ranges = [x for x in recent_ranges if x > 0]
+        typical_range = sorted(recent_ranges)[len(recent_ranges) // 2] if recent_ranges else rng
+
+        # The buffer is tied to the actual recent candle ranges, not a fixed
+        # dollar amount. This prevents unrealistically tight $1-$2 stops.
+        buffer = max(rng * 0.35, typical_range * 0.75)
 
         if direction == 1:
             swing = float(lookback["low"].min())
@@ -268,6 +277,10 @@ class SignalGenerator:
             tp1 = entry - risk
             tp2 = entry - risk * 1.5
             tp3 = entry - risk * 2.0
+
+        # Reject pathological levels caused by a bad/outlier candle.
+        if risk > entry * 0.01:
+            return None
 
         return entry, sl, tp1, tp2, tp3
 
