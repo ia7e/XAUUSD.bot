@@ -103,7 +103,7 @@ class TelegramBot:
     async def send_multiple_signals(self, signals: list) -> bool:
         if not signals:
             return False
-        message = "<b>📊 XAUUSD Multi-Timeframe Analysis</b>\n\n"
+        message = "<b>📊 تحليل إشارات الذهب متعدد الأطر الزمنية</b>\n\n"
         for signal in signals:
             signal_data = signal.to_dict() if hasattr(signal, 'to_dict') else signal
             signal_type = signal_data.get('signal_type', 'UNKNOWN')
@@ -112,24 +112,25 @@ class TelegramBot:
             entry = signal_data.get('entry_price', 0)
             emoji_map = {'STRONG_BUY': '🚀', 'BUY': '🟢', 'WEAK_BUY': '✅', 'STRONG_SELL': '📉', 'SELL': '🔴', 'WEAK_SELL': '⚠️'}
             emoji = emoji_map.get(signal_type, '➖')
-            message += f"{emoji} <b>{timeframe}:</b> {signal_type} (Conf: {confidence:.1%}) - Entry: ${entry:.4f}\n"
+            names = {'STRONG_BUY':'شراء قوي','BUY':'شراء','WEAK_BUY':'شراء','STRONG_SELL':'بيع قوي','SELL':'بيع','WEAK_SELL':'بيع'}
+            message += f"{emoji} <b>الفريم {timeframe}:</b> {names.get(signal_type, 'غير معروف')} — الثقة: {confidence:.1%} — الدخول: ${entry:.4f}\n"
         message += "\n" + "=" * 40
         return await self.send_message(message)
 
     async def _start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("🚀 <b>XAUUSD Trading Bot</b> 🚀\n\nWelcome to the professional XAUUSD trading signal bot!\n\nThis bot loads 600 candles across multiple timeframes (1m, 5m, 15m, 30m, 1h, 4h)\nand makes the signal decision using the latest 10 closed candles.\n\nAvailable commands:\n/start - Show this message\n/status - Show bot status\n/signals - Show recent signals\n/help - Show help\n\nSignals are sent automatically when detected!", parse_mode='HTML')
+        await update.message.reply_text("🚀 <b>XAUUSD Trading Bot</b> 🚀\n\nمرحبًا بك في نظام إشارات الذهب XAUUSD.\n\n📡 مصدر البيانات: BIQuote\n📊 يتم اتخاذ القرار من آخر 10 شموع مغلقة.\n⏱️ المراقبة مستمرة كل ثانية.\n\nالأوامر المتاحة:\n/start - عرض رسالة التشغيل\n/status - حالة النظام\n/signals - آخر الإشارات\n/help - المساعدة\n\n🟢🟢 يتم إرسال إشارة الشراء أو البيع تلقائيًا عند تحقق الشروط.", parse_mode='HTML')
 
     async def _status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("🤖 <b>Bot Status</b> 🤖\n\n✅ Running and monitoring XAUUSD\n✅ Analyzing all timeframes\n✅ Ready to send signals\n\nDecision uses the latest 10 closed candles.", parse_mode='HTML')
+        await update.message.reply_text("🤖 <b>حالة نظام إشارات الذهب</b> 🤖\n\n✅ النظام يعمل ويراقب XAUUSD\n✅ يتم تحليل جميع الأطر الزمنية\n✅ النظام جاهز لإرسال الإشارات\n📊 القرار يعتمد على آخر 10 شموع مغلقة\n📡 مصدر البيانات: BIQuote", parse_mode='HTML')
 
     async def _signals_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("📊 <b>Recent Signals</b> 📊\n\nFetching latest signals...\nCheck back soon for active signals!", parse_mode='HTML')
+        await update.message.reply_text("📊 <b>آخر الإشارات</b> 📊\n\nجاري جلب أحدث الإشارات...\nستظهر الإشارات النشطة هنا عند توفرها.", parse_mode='HTML')
 
     async def _help_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text("🆘 <b>Help</b> 🆘\n\nFor support or questions, contact the bot administrator.\n\nThe bot automatically sends signals when conditions are met.\nEach signal includes:\n  • Signal type (BUY/SELL)\n  • Entry price\n  • Stop Loss\n  • 3 Take Profit levels\n  • Confidence score\n  • Technical reasons\n", parse_mode='HTML')
+        await update.message.reply_text("🆘 <b>المساعدة</b> 🆘\n\nالنظام يرسل إشارات الذهب تلقائيًا عند تحقق الشروط.\n\nكل إشارة تحتوي على:\n• نوع الإشارة: شراء أو بيع\n• سعر الدخول\n• وقف الخسارة\n• ثلاثة أهداف\n• نسبة الثقة\n• أسباب فنية\n• نماذج الشموع", parse_mode='HTML')
 
     async def _echo(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        await update.message.reply_text(f"I received: <i>{update.message.text}</i>\n\nUse /start, /status, /signals, or /help for commands.", parse_mode='HTML')
+        await update.message.reply_text(f"وصلتني رسالتك: <i>{update.message.text}</i>\n\nاستخدم /start أو /status أو /signals أو /help.", parse_mode='HTML')
 
     async def shutdown(self):
         if self.app:
