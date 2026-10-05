@@ -36,8 +36,11 @@ SMA_PERIODS = [50, 100, 200]
 EMA_PERIODS = [20, 50]
 
 # Signal Strength Thresholds
-STRONG_BUY_THRESHOLD = 0.7
-STRONG_SELL_THRESHOLD = 0.7
+# Balanced thresholds: do not wait for near-perfect alignment before sending BUY/SELL.
+STRONG_BUY_THRESHOLD = 0.45
+STRONG_SELL_THRESHOLD = 0.45
+BUY_THRESHOLD = 0.22
+SELL_THRESHOLD = 0.22
 
 # Risk Management
 RISK_PER_TRADE = 0.02
