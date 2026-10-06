@@ -52,6 +52,7 @@ class XAUUSBot:
         self.last_processed_candle: Dict[str, Any] = {}
         self.signal_history: List[Dict[str, Any]] = []
         self.running = False
+        self.market_open_state: Optional[bool] = None
 
     async def initialize(self):
         logger.info(f"Initializing {BOT_NAME} v{BOT_VERSION}")
@@ -204,6 +205,30 @@ class XAUUSBot:
                 f"{signal.signal_type.value}"
             )
 
+    async def _check_market_status(self):
+        status = self.data_fetcher.fetch_market_status()
+        if status is None:
+            return
+
+        if self.market_open_state is None:
+            self.market_open_state = status
+            return
+
+        if status == self.market_open_state:
+            return
+
+        self.market_open_state = status
+        if not status:
+            logger.info("BIQuote reports XAUUSD market CLOSED")
+            if self.telegram_bot:
+                await self.telegram_bot.send_market_closed()
+        else:
+            logger.info("BIQuote reports XAUUSD market OPEN")
+            if self.telegram_bot:
+                await self.telegram_bot.send_message(
+                    "🟢 <b>تم فتح السوق</b>\n📡 XAUUSD عاد للعمل."
+                )
+
     async def _monitor_active_signals(self):
         if not self.active_signals:
             return
@@ -264,7 +289,8 @@ class XAUUSBot:
         await self._open_best_signal()
         while self.running:
             try:
-                # Every second: only price + active-signal monitoring.
+                # Every second: market state + active-signal monitoring.
+                await self._check_market_status()
                 await self._monitor_active_signals()
 
                 # New-candle analysis is scheduled by timeframe, not every second.
