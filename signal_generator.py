@@ -265,18 +265,22 @@ class SignalGenerator:
             risk = entry - sl
             if risk <= 0:
                 return None
-            tp1 = entry + risk
-            tp2 = entry + risk * 1.5
-            tp3 = entry + risk * 2.0
+            # Fixed XAUUSD target distances requested by the user:
+            # TP1 = +$5, TP2 = +$10, TP3 = +$14 from entry.
+            tp1 = entry + 5.0
+            tp2 = entry + 10.0
+            tp3 = entry + 14.0
         else:
             swing = float(lookback["high"].max())
             sl = swing + buffer
             risk = sl - entry
             if risk <= 0:
                 return None
-            tp1 = entry - risk
-            tp2 = entry - risk * 1.5
-            tp3 = entry - risk * 2.0
+            # Fixed XAUUSD target distances requested by the user:
+            # TP1 = -$5, TP2 = -$10, TP3 = -$14 from entry.
+            tp1 = entry - 5.0
+            tp2 = entry - 10.0
+            tp3 = entry - 14.0
 
         # Reject pathological levels caused by a bad/outlier candle.
         if risk > entry * 0.01:
