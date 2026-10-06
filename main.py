@@ -138,16 +138,16 @@ class XAUUSBot:
             live_price = self.data_fetcher.get_current_price()
             if live_price is not None and float(live_price) > 0:
                 signal.entry_price = float(live_price)
-                risk = abs(signal.entry_price - signal.stop_loss)
-                if risk > 0:
-                    if self._is_buy(signal.signal_type.value):
-                        signal.take_profit_1 = signal.entry_price + risk
-                        signal.take_profit_2 = signal.entry_price + risk * 1.5
-                        signal.take_profit_3 = signal.entry_price + risk * 2.0
-                    else:
-                        signal.take_profit_1 = signal.entry_price - risk
-                        signal.take_profit_2 = signal.entry_price - risk * 1.5
-                        signal.take_profit_3 = signal.entry_price - risk * 2.0
+                # Fixed XAUUSD targets: 5 dollars, then another 5, then 4.
+                # TP1 = 5, TP2 = 10, TP3 = 14 from the live entry.
+                if self._is_buy(signal.signal_type.value):
+                    signal.take_profit_1 = signal.entry_price + 5.0
+                    signal.take_profit_2 = signal.entry_price + 10.0
+                    signal.take_profit_3 = signal.entry_price + 14.0
+                else:
+                    signal.take_profit_1 = signal.entry_price - 5.0
+                    signal.take_profit_2 = signal.entry_price - 10.0
+                    signal.take_profit_3 = signal.entry_price - 14.0
 
         if signal:
             logger.info(f"{timeframe}: {signal.signal_type.value} confidence={signal.confidence:.1%}")
