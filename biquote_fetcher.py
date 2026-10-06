@@ -100,6 +100,38 @@ class BIQuoteFetcher:
             self.logger.warning(f"Unable to read BIQuote market status: {e}")
             return None
 
+    def fetch_market_status(self) -> Optional[bool]:
+        """Read BIQuote's explicit market-open status when provided."""
+        try:
+            response = requests.get(
+                f"{self.base_url}/{self.symbol}",
+                headers=self.headers,
+                timeout=5,
+            )
+            response.raise_for_status()
+            data = response.json()
+            if not isinstance(data, dict):
+                return None
+
+            for key in ("isOpen", "is_open", "marketOpen", "market_open", "open"):
+                if key not in data:
+                    continue
+                value = data[key]
+                if isinstance(value, bool):
+                    return value
+                if isinstance(value, (int, float)):
+                    return bool(value)
+                if isinstance(value, str):
+                    value = value.strip().lower()
+                    if value in ("true", "1", "open", "opened"):
+                        return True
+                    if value in ("false", "0", "closed", "close"):
+                        return False
+            return None
+        except Exception as e:
+            self.logger.warning(f"Unable to read BIQuote market status: {e}")
+            return None
+
     def fetch_current_price(self) -> Optional[float]:
         """Fetch current price using the latest candle from BIQuote"""
         try:
