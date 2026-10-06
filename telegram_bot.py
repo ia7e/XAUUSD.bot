@@ -113,6 +113,11 @@ class TelegramBot:
         )
         return await self.send_message(message)
 
+    async def send_market_closed(self) -> bool:
+        return await self.send_message(
+            "🔴 <b>تم إغلاق السوق</b>\n📡 XAUUSD متوقف حاليًا.\n⏳ ستعود المراقبة عند فتح السوق."
+        )
+
     async def send_signal_update(self, signal: Dict[str, Any], event: str, current_price: float) -> bool:
         is_buy = signal.get('signal_type') in ['STRONG_BUY', 'BUY', 'WEAK_BUY']
         direction = 'شراء' if is_buy else 'بيع'
