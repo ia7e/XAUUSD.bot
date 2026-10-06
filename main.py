@@ -169,6 +169,9 @@ class XAUUSBot:
         return signal_type in ['STRONG_BUY', 'BUY', 'WEAK_BUY']
 
     async def _open_best_signal(self):
+        # Never open a signal while BIQuote reports the market as closed.
+        if self.market_open_state is False:
+            return
         """Find the strongest NEW candle setup and allow only one global active signal."""
         if self.active_signals:
             return
@@ -230,6 +233,8 @@ class XAUUSBot:
                 )
 
     async def _monitor_active_signals(self):
+        if self.market_open_state is False:
+            return
         if not self.active_signals:
             return
         price = self.data_fetcher.get_current_price()
